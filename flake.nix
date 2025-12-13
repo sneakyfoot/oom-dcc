@@ -40,6 +40,7 @@
     in
     {
       devShells.${system}.default = pkgs.mkShell {
+
         name = "oom-dcc-dev";
         packages = [ python uv ];
 
