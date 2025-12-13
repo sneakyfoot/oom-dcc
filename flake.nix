@@ -35,7 +35,7 @@
       };
 
       cli = import ./nix/cli.nix {
-        inherit pkgs uvProjectEnv python uv;
+        inherit pkgs uvProjectEnv python uv src;
       };
     in
     {

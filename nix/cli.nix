@@ -1,4 +1,4 @@
-{ pkgs, uvProjectEnv, python, uv }:
+{ pkgs, uvProjectEnv, python, uv, src }:
 let
   oom = pkgs.writeShellApplication {
     name = "oom";
@@ -11,7 +11,7 @@ let
       export UV_PROJECT_ENVIRONMENT=${uvProjectEnv}
       export UV_CACHE_DIR=/var/uv/cache
       echo "[oom] Syncing deps"
-      uv sync --frozen --no-dev
+      uv sync --project ${src} --frozen --no-dev
       echo "[oom] Setting up environment"
       uv run --frozen --no-dev --no-sync oom "$@" &> /dev/null
       # shellcheck disable=SC1091
