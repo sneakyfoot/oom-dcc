@@ -2,7 +2,7 @@
 let
   oom = pkgs.writeShellApplication {
     name = "oom";
-    runtimeInputs = [ uv python ];
+    runtimeInputs = [ uv python pkgs.stdenv.cc.cc.lib ];
     text = ''
       set -euo pipefail
       export UV_PYTHON=${python}/bin/python
@@ -13,7 +13,7 @@ let
       echo "[oom] Syncing deps"
       uv sync --project ${src} --frozen --no-dev
       echo "[oom] Setting up environment"
-      uv run --project ${src} --frozen --no-dev --no-sync oom "$@" &> /dev/null
+      uv run --project ${src} --frozen --no-dev --no-sync oom "$@" # &> /dev/null
       # shellcheck disable=SC1091
       source /tmp/oom.env
       echo "[oom] Entering environment"
