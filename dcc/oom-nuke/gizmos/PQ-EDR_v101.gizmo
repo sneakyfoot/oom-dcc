@@ -1,0 +1,131 @@
+#! /Applications/Nuke13.0v1.Beta4/Nuke13.0v1.Beta4.app/Contents/MacOS/libnuke-13.0.1.dylib -nx
+version 13.0 v1.632098b
+Gizmo {
+ label "(\[value gamut]\\nto \[value eotf])"
+ addUserKnob {20 User l "PQ to EDR"}
+ addUserKnob {4 gamut l "Input Gamut" t "The primaries of the input PQ image data." M {"ITU-R BT.2020" P3-D65 "" "" ""}}
+ addUserKnob {68 eotf l "Output EOTF" t "The assumed EOTF of the EDR display." M {sRGB "Gamma 2.2" "Gamma 2.4" "" "" ""}}
+ addUserKnob {7 norm l "Normalization (nits)" t "Normalizaion factor.\n\nThe PQ nit value which will be normalised to 1.0.\n\nUseful to e.g. prevent clipping of a 1000 nit PQ signal on the 16\" MacBook Pro's 500 nit display." R 100 200}
+ norm 100
+ addUserKnob {6 clamp l Clamp t "Clamp output values greater than 1.0." +STARTLINE}
+ addUserKnob {26 ""}
+ addUserKnob {26 description l " " T "Converts PQ image data to P3 EDR with values greater than 1.0"}
+ addUserKnob {26 version l " " T v1.0.1}
+}
+ Input {
+  inputs 0
+  name Input1
+  xpos 400
+  ypos -297
+ }
+ Dot {
+  name Dot2
+  xpos 434
+  ypos -222
+ }
+set N218e1800 [stack 0]
+ Dot {
+  name Dot3
+  xpos 544
+  ypos -222
+ }
+ Colorspace {
+  colorspace_in st2084
+  primary_in DCI-P3
+  primary_out DCI-P3
+  name PQP3_P3
+  xpos 510
+  ypos -153
+ }
+push $N218e1800
+ Dot {
+  name Dot1
+  xpos 324
+  ypos -222
+ }
+ Colorspace {
+  colorspace_in st2084
+  primary_in Rec.2020
+  primary_out DCI-P3
+  name PQ2020_P3
+  xpos 290
+  ypos -153
+ }
+ Switch {
+  inputs 2
+  which {{parent.gamut}}
+  name Switch2
+  xpos 400
+  ypos -81
+ }
+ Multiply {
+  value {{"1 / parent.norm"}}
+  name Multiply4
+  xpos 400
+  ypos -13
+ }
+set N218e0400 [stack 0]
+ Clamp {
+  name Clamp1
+  xpos 510
+  ypos 59
+ }
+push $N218e0400
+ Switch {
+  inputs 2
+  which {{parent.clamp x1 0}}
+  name switch_clamp
+  xpos 400
+  ypos 135
+ }
+set N21874f00 [stack 0]
+ Colorspace {
+  primary_in DCI-P3
+  colorspace_out 2.40
+  primary_out DCI-P3
+  name gamma24
+  xpos 510
+  ypos 207
+ }
+ Dot {
+  name Dot5
+  xpos 544
+  ypos 306
+ }
+push $N21874f00
+ Colorspace {
+  primary_in DCI-P3
+  colorspace_out 2.20
+  primary_out DCI-P3
+  name gamma22
+  xpos 400
+  ypos 207
+ }
+push $N21874f00
+ Colorspace {
+  primary_in DCI-P3
+  colorspace_out sRGB
+  primary_out DCI-P3
+  name sRGB
+  xpos 290
+  ypos 207
+ }
+ Dot {
+  name Dot4
+  xpos 324
+  ypos 306
+ }
+ Switch {
+  inputs 3
+  which {{parent.eotf x1 0}}
+  name Switch1
+  xpos 400
+  ypos 303
+ }
+ Output {
+  name Output1
+  selected true
+  xpos 400
+  ypos 399
+ }
+end_group

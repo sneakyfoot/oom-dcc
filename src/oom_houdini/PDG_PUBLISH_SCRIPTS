@@ -1,0 +1,60 @@
+## OOM LOP PUBLISH
+
+#######################################################################
+# TOPs Python – Publish USD from cache node (centralized)
+#######################################################################
+from oom_houdini.pdg_publish import publish_usd_from_cache_node
+
+# Work item provided by TOPs environment
+item = work_item
+
+# Register publish and set downstream attributes
+publish_usd_from_cache_node(item, cache_node_attr="cache_node")
+
+
+## OOM Cache
+
+#######################################################################
+# TOPs Python – Publish frame-sequence cache from cache node (centralized)
+#######################################################################
+from oom_houdini.pdg_publish import publish_cache_from_cache_node
+
+item = work_item
+
+publish_cache_from_cache_node(item, cache_node_attr="cache_node")
+
+
+## OOM Renderpass
+
+#######################################################################
+# TOPs Python – Publish renderpass sequence from template (centralized)
+#######################################################################
+from oom_houdini.pdg_publish import publish_renderpass_from_template
+
+item = work_item
+
+publish_renderpass_from_template(item, cache_node_attr="cache_node")
+
+
+## OOM Slapcomp (OOM Comp HDA)
+
+#######################################################################
+# TOPs Python – Publish comp sequence from template (centralized)
+#######################################################################
+from oom_houdini.pdg_publish import publish_comp_from_template
+
+item = work_item
+
+publish_comp_from_template(item, cache_node_attr="cache_node")
+
+
+## OOM Comp HDA, create daily section
+
+#######################################################################
+# TOPs Python – Create a Version (daily) for comp (centralized)
+#######################################################################
+from oom_houdini.pdg_publish import create_comp_daily_version
+
+item = work_item
+
+create_comp_daily_version(item, cache_node_attr="cache_node")

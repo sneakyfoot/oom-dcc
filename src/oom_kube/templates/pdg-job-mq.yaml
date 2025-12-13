@@ -1,0 +1,129 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: { { job_name } }
+  namespace: { { namespace } }
+  labels:
+    app: dcc-runtime
+    managed-by: oom-scheduler
+
+spec:
+  backoffLimit: 0
+  completions: 1
+  parallelism: 1
+  template:
+    metadata:
+      labels:
+        app: dcc-runtime
+        managed-by: oom-scheduler
+        oom-pdg-mq: { { job_name } }
+
+    spec:
+      hostNetwork: true
+      hostPID: true
+      serviceAccountName: dcc-scheduler
+      restartPolicy: Never
+      priorityClassName: farm-default
+      dnsPolicy: ClusterFirstWithHostNet
+
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: oom/farm
+                    operator: In
+                    values:
+                      - "true"
+
+      volumes:
+        - name: oom-repo
+          persistentVolumeClaim:
+            claimName: { { oom_repo } }
+        - name: oom-venv
+          persistentVolumeClaim:
+            claimName: oom-venv-pvc
+        - name: houdini
+          persistentVolumeClaim:
+            claimName: houdini-latest-pvc
+        - name: raid
+          hostPath:
+            path: /mnt/RAID
+            type: Directory
+        - name: home
+          hostPath:
+            path: /home
+            type: Directory
+        - name: passwd
+          hostPath:
+            path: /etc/passwd
+            type: File
+        - name: group
+          hostPath:
+            path: /etc/group
+            type: File
+
+      containers:
+        - name: mq
+          image: ghcr.io/sneakyfoot/dcc-runtime:rocky9
+          imagePullPolicy: IfNotPresent
+
+          command:
+            - /bin/bash
+          args:
+            - -lc
+            - { { command } }
+
+          env:
+            - name: OOM
+              value: { { oom_repo_path } }
+            - name: OOM_VENV
+              value: /var/uv/venvs/oom-dcc
+            - name: OOM_DEV
+              value: { { oom_dev } }
+            - name: HOUDINI_PACKAGE_DIR
+              value: { { oom_repo_path } }/dcc/oom-houdini/packages
+            - name: HFS
+              value: /opt/houdini
+            - name: PDG_DIR
+              value: { { pdg_dir } }
+            - name: PDG_TEMP
+              value: { { pdg_dir } }
+            - name: PDG_SCRIPTDIR
+              value: { { pdg_scripts } }
+            - name: PDG_ITEM_NAME
+              value: "{ { pdg_item_name } }"
+            - name: PDG_ITEM_ID
+              value: "{ { pdg_item } }"
+            - name: PDG_RESULT_SERVER
+              value: "{ { pdg_result_server } }"
+            - name: PDG_RESULT_CLIENT_ID
+              value: "{ { pdg_result_client_id } }"
+            - name: PDGMQ_USE_IP
+              value: "1"
+            - name: PDGMQ_EXPERIMENTAL_IP
+              value: "1"
+
+          securityContext:
+            runAsUser: { { uid } }
+            runAsGroup: { { gid } }
+
+          volumeMounts:
+            - name: oom-repo
+              mountPath: { { oom_repo_path } }
+            - name: oom-venv
+              mountPath: /var/uv/venvs/oom-dcc
+            - name: houdini
+              mountPath: /opt/houdini
+            - name: raid
+              mountPath: /mnt/RAID
+              readOnly: false
+            - name: home
+              mountPath: /home
+              readOnly: false
+            - name: passwd
+              mountPath: /etc/passwd
+              readOnly: true
+            - name: group
+              mountPath: /etc/group
+              readOnly: true

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mainMenu>
+  <menuBar>
+    <subMenu id="oom_submenu">
+      <label>OOM</label>
+
+      <scriptItem>
+        <label>OOM Load</label>
+        <scriptPath>$OOM_HOUDINI/scripts/file_load.py</scriptPath>
+      </scriptItem>
+
+      <scriptItem>
+        <label>OOM Save</label>
+        <scriptPath>$OOM_HOUDINI/scripts/file_save.py</scriptPath>
+      </scriptItem>
+
+      <scriptItem>
+        <label>OOM Version Up</label>
+        <scriptPath>$OOM_HOUDINI/scripts/file_version_up.py</scriptPath>
+      </scriptItem>
+
+      <separatorItem/>
+      
+      <scriptItem>
+        <label>Sync Cut Range</label>
+        <scriptPath>$OOM_HOUDINI/scripts/sync_cut_range.py</scriptPath>
+      </scriptItem>
+
+      <separatorItem/>
+
+      <scriptItem>
+        <label>Cook Selected TOP</label>
+        <scriptPath>$OOM_HOUDINI/scripts/submit_top.py</scriptPath>
+      </scriptItem>
+
+      <separatorItem/>
+
+      <scriptItem>
+        <label>Open HRPYC</label>
+        <scriptPath>$OOM_HOUDINI/scripts/open_hrpyc.py</scriptPath>
+      </scriptItem>
+
+    </subMenu>
+  </menuBar>
+</mainMenu>

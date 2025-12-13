@@ -1,0 +1,21 @@
+[build-system]
+requires = ["uv_build>=0.9.17,<0.10.0"]
+build-backend = "uv_build"
+
+[project]
+name = "oom-dcc"
+version = "0.1.0"
+description = "OOM DCC pipeline"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+  "kubernetes>=29.0.0",
+  "jinja2>=3.1",
+  "pyyaml>=6.0",
+  "rich>=13.0",
+  "setuptools>=80.9.0",
+  "pyside2>=5.15.2.1",
+]
+
+[project.scripts]
+oom = "oom_context:main"
+bubble-k8s = "oom_kube.bubble:main"

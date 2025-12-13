@@ -1,0 +1,44 @@
+{
+	"enable": true,
+	"load_package_once": true,
+	"version": "MANUAL",
+	"path": "$HOUDINI_PACKAGE_PATH/oom",
+	"env": [
+		{
+			"UV_PROJECT_ENVIRONMENT": "/var/uv/venvs/oom-dcc"
+		},
+		{
+			"OOM_HOUDINI": "$OOM/dcc/oom-houdini/packages/oom"
+		},
+		{
+			"PYTHONPATH": {
+				"method": "append",
+				"value": "$UV_PROJECT_ENVIRONMENT/lib/python3.11/site-packages"
+			}
+		},
+		{
+			"PYTHONPATH": {
+				"method": "append",
+				"value": "$OOM/src"
+			}
+		},
+		{
+			"PYTHONPATH": {
+				"method": "append",
+				"value": "$OOM/oom-core"
+			}
+		},
+		{
+			"HOUDINI_PATH": {
+				"method": "append",
+				"value": "$HOUDINI_PACKAGE_PATH/oom"
+			}
+		},
+		{
+			"HOUDINI_OTLSCAN_PATH": {
+				"method": "append",
+				"value": "/opt/node_dev/houdini"
+			}
+		}
+	]
+}

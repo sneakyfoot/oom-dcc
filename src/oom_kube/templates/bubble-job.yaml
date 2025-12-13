@@ -1,0 +1,173 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: { { job_name } }
+  namespace: { { namespace } }
+  labels:
+    app: dcc-runtime
+    managed-by: oom-bubble
+
+spec:
+  backoffLimit: 0
+  completions: 1
+  parallelism: 1
+  template:
+    metadata:
+      labels:
+        app: dcc-runtime
+        managed-by: oom-bubble
+        oom-bubble-job: { { job_name } }
+
+    spec:
+      hostNetwork: true
+      hostPID: true
+      runtimeClassName: nvidia
+      serviceAccountName: dcc-scheduler
+      restartPolicy: Never
+      priorityClassName: dcc-user
+      dnsPolicy: ClusterFirstWithHostNet
+
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: oom/workstation
+                    operator: In
+                    values:
+                      - "true"
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - { { target_node } }
+
+      volumes:
+        # Houdini Temp
+        - name: houdini-temp
+          persistentVolumeClaim:
+            claimName: houdini-temp
+        # PVCs
+        - name: oom-repo
+          persistentVolumeClaim:
+            claimName: { { oom_repo } }
+        - name: oom-venv
+          persistentVolumeClaim:
+            claimName: oom-venv-pvc
+        - name: node-dev
+          persistentVolumeClaim:
+            claimName: node-dev-pvc
+        - name: houdini
+          persistentVolumeClaim:
+            claimName: houdini-latest-pvc
+        - name: nuke
+          persistentVolumeClaim:
+            claimName: nuke-latest-pvc
+        - name: 3de
+          persistentVolumeClaim:
+            claimName: 3de-latest-pvc
+        # HostPaths
+        - name: raid
+          hostPath:
+            path: /mnt/RAID
+            type: Directory
+        - name: x11-sock
+          hostPath:
+            path: /tmp/.X11-unix
+            type: Directory
+        - name: home
+          hostPath:
+            path: /home
+            type: Directory
+        - name: passwd
+          hostPath:
+            path: /etc/passwd
+            type: File
+        - name: group
+          hostPath:
+            path: /etc/group
+            type: File
+
+      containers:
+        - name: main
+          # image: ghcr.io/sneakyfoot/dcc-runtime:rocky9
+          image: ghcr.io/sneakyfoot/dcc-runtime:testing
+          imagePullPolicy: Always
+
+          command:
+            - bash
+            - -lc
+
+          args:
+            - exec sleep infinity
+
+          env:
+            - name: OOM
+              value: { { oom_repo_path } }
+            - name: OOM_VENV
+              value: /var/uv/venvs/oom-dcc
+            - name: OOM_DEV
+              value: { { oom_dev } }
+            - name: NODE_DEV
+              value: /opt/node_dev
+            - name: DISPLAY
+              value: { { display } }
+            - name: NVIDIA_VISIBLE_DEVICES
+              value: all
+            - name: NVIDIA_DRIVER_CAPABILITIES
+              value: all
+            - name: OCIO
+              value: /mnt/RAID/Assets/studio-config-v2.2.0_aces-v1.3_ocio-v2.3.ocio
+            - name: HOUDINI_PACKAGE_DIR
+              value: { { oom_repo_path } }/dcc/oom-houdini/packages
+            - name: QT_QPA_PLATFORM
+              value: xcb
+            - name: QT_XKB_CONFIG_ROOT
+              value: /usr/share/X11/xkb
+
+          securityContext:
+            runAsUser: { { uid } }
+            runAsGroup: { { gid } }
+
+          volumeMounts:
+            # Houdini Temp
+            - name: houdini-temp
+              mountPath: /tmp/houdini_temp
+            # PVCs
+            - name: oom-repo
+              mountPath: { { oom_repo_path } }
+            - name: oom-venv
+              mountPath: /var/uv/venvs/oom-dcc
+            - name: node-dev
+              mountPath: /opt/node_dev
+            - name: houdini
+              mountPath: /opt/houdini
+            - name: nuke
+              mountPath: /opt/nuke
+            - name: 3de
+              mountPath: /opt/3de
+            # HostPaths
+            - name: raid
+              mountPath: /mnt/RAID
+              readOnly: false
+            - name: x11-sock
+              mountPath: /tmp/.X11-unix
+              readOnly: false
+            - name: home
+              mountPath: /home
+              readOnly: false
+            - name: passwd
+              mountPath: /etc/passwd
+              readOnly: true
+            - name: group
+              mountPath: /etc/group
+              readOnly: true
+
+          # Resource requests include defaults (32 CPU, 64Gi RAM, all host GPUs) unless CLI overrides them.
+          resources:
+            requests:
+              cpu: { { cpu_request } }
+              memory: { { mem_request } }
+              nvidia.com/gpu: { { gpu_request } }
+            limits:
+              # Match GPU limit to request so the scheduler can place the pod.
+              nvidia.com/gpu: { { gpu_request } }

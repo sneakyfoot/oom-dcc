@@ -1,0 +1,204 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: { { job_name } }
+  namespace: { { namespace } }
+  labels:
+    app: dcc-runtime
+    managed-by: oom-scheduler
+    oom/workload: pdg-cpu
+
+spec:
+  ttlSecondsAfterFinished: 86400
+  backoffLimit: 3
+  completions: 1
+  parallelism: 1
+  template:
+    metadata:
+      labels:
+        app: dcc-runtime
+        managed-by: oom-scheduler
+        oom-bubble-job: { { job_name } }
+
+    spec:
+      hostNetwork: true
+      hostPID: true
+      serviceAccountName: dcc-scheduler
+      restartPolicy: Never
+      priorityClassName: { { priority_class } }
+      dnsPolicy: ClusterFirstWithHostNet
+
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: oom/farm
+                    operator: In
+                    values:
+                      - "true"
+
+      volumes:
+        # Houdini Temp
+        - name: houdini-temp
+          persistentVolumeClaim:
+            claimName: houdini-temp-cpu
+        # PVCs
+        - name: oom-repo
+          persistentVolumeClaim:
+            claimName: { { oom_repo } }
+        - name: oom-venv
+          persistentVolumeClaim:
+            claimName: oom-venv-pvc
+        - name: node-dev
+          persistentVolumeClaim:
+            claimName: node-dev-pvc
+        - name: houdini
+          persistentVolumeClaim:
+            claimName: houdini-latest-pvc
+        - name: nuke
+          persistentVolumeClaim:
+            claimName: nuke-latest-pvc
+        - name: 3de
+          persistentVolumeClaim:
+            claimName: 3de-latest-pvc
+        # HostPaths
+        - name: raid
+          hostPath:
+            path: /mnt/RAID
+            type: Directory
+        - name: home
+          hostPath:
+            path: /home
+            type: Directory
+        - name: passwd
+          hostPath:
+            path: /etc/passwd
+            type: File
+        - name: group
+          hostPath:
+            path: /etc/group
+            type: File
+
+      containers:
+        - name: main
+          image: ghcr.io/sneakyfoot/dcc-runtime:testing
+          imagePullPolicy: Always
+
+          command:
+            - /bin/bash
+          args:
+            - -lc
+            - |-
+{ { command | indent(14, True) } }
+
+          env:
+            - name: OOM
+              value: { { oom_repo_path } }
+            - name: OOM_VENV
+              value: /var/uv/venvs/oom-dcc
+            - name: OOM_DEV
+              value: { { oom_dev } }
+            - name: NODE_DEV
+              value: /opt/node_dev
+            - name: OCIO
+              value: /mnt/RAID/Assets/studio-config-v2.2.0_aces-v1.3_ocio-v2.3.ocio
+            - name: HOUDINI_PACKAGE_DIR
+              value: { { oom_repo_path } }/dcc/oom-houdini/packages
+            - name: HOUDINI_USE_HFS_OCL
+              value: "1"
+            - name: HOUDINI_OCL_DEVICETYPE
+              value: CPU
+            - name: HOUDINI_OCL_VENDOR
+              value: Intel(R) Corporation
+            - name: HFS
+              value: /opt/houdini
+            - name: PYTHONHOME
+              value: /opt/houdini/python
+            - name: PDG_DIR
+              value: { { pdg_dir } }
+            - name: PDG_TEMP
+              value: { { pdg_dir } }
+            - name: PDG_SCRIPTDIR
+              value: { { pdg_scripts } }
+            - name: PDG_ITEM_DATA_SOURCE
+              value: "1"
+            - name: PDG_RESULT_SERVER
+              value: { { pdg_result_server } }
+            - name: PDG_RESULT_CLIENT_ID
+              value: "{ { pdg_result_client_id } }"
+            - name: PDG_JOBUSE_PDGNET
+              value: "1"
+            - name: PDG_RPC_DELEGATE
+              value: pdgjob.pdgnetrpc
+            - name: PDG_RPC_RETRIES
+              value: "5"
+            - name: PDG_RPC_TIMEOUT
+              value: "5"
+            - name: PDG_RPC_MAX_BACKOFF
+              value: "2"
+            - name: PDG_RPC_MAX_ERRORS
+              value: "5"
+            - name: PDG_RPC_IGNORE_ERRORS
+              value: "0"
+            - name: PDG_ITEM_ID
+              value: "{ { pdg_item } }"
+            - name: PDG_ITEM_NAME
+              value: { { pdg_item_name } }
+            # Passthrough project/shot context from submitting session
+            - name: OOM_PROJECT_ID
+              value: "{ { OOM_PROJECT_ID } }"
+            - name: OOM_PROJECT_PATH
+              value: { { OOM_PROJECT_PATH } }
+            - name: OOM_SEQUENCE_ID
+              value: "{ { OOM_SEQUENCE_ID } }"
+            - name: OOM_SHOT_ID
+              value: "{ { OOM_SHOT_ID } }"
+            - name: OOM_SHOT_PATH
+              value: { { OOM_SHOT_PATH } }
+            - name: CUT_IN
+              value: "{ { CUT_IN } }"
+            - name: CUT_OUT
+              value: "{ { CUT_OUT } }"
+
+          securityContext:
+            runAsUser: { { uid } }
+            runAsGroup: { { gid } }
+
+          volumeMounts:
+            # Houdini Temp
+            - name: houdini-temp
+              mountPath: /tmp/houdini_temp
+            # PVCs
+            - name: oom-repo
+              mountPath: { { oom_repo_path } }
+            - name: oom-venv
+              mountPath: /var/uv/venvs/oom-dcc
+            - name: node-dev
+              mountPath: /opt/node_dev
+            - name: houdini
+              mountPath: /opt/houdini
+            - name: nuke
+              mountPath: /opt/nuke
+            - name: 3de
+              mountPath: /opt/3de
+            # HostPaths
+            - name: raid
+              mountPath: /mnt/RAID
+              readOnly: false
+            - name: home
+              mountPath: /home
+              readOnly: false
+            - name: passwd
+              mountPath: /etc/passwd
+              readOnly: true
+            - name: group
+              mountPath: /etc/group
+              readOnly: true
+
+          resources:
+            requests:
+              cpu: { { cpu_request } }
+              memory: { { mem_request } }
+            limits:
+              memory: { { mem_request } }
