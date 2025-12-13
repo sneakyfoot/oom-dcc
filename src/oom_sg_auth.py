@@ -18,13 +18,14 @@ def oom_auth() -> ShotgunUser:
 
     if kube_credentials:
         script_name, api_key, host = kube_credentials
-        print("[oom] Authorizing with script user from kubernetes secret")
+        # print("[oom] Authorizing with script user from kubernetes secret")
         return auth.create_script_user(api_script=script_name, api_key=api_key, host=host)
 
     env_credentials = _load_credentials_from_environment()
 
     if env_credentials:
         script_name, api_key, host = env_credentials
+        print("[oom] K8s auth failed")
         print("[oom] Authorizing with script user from environment variables")
         return auth.create_script_user(api_script=script_name, api_key=api_key, host=host)
 
