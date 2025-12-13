@@ -61,6 +61,7 @@
         dcc-runtime = runtime.dcc-runtime;
         houdini-fhs = houdini.houdiniFhsEnv;
         houdini = houdini.houdiniWrapper;
+        houdini-container = houdini.houdiniContainerImage;
         mplay = houdini.mplayWrapper;
         oom = cli.oom;
       };

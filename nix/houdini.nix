@@ -68,11 +68,64 @@ let
       exec ${houdiniFhsEnv}/bin/houdini-fhs ${nukeHostRoot}/Nuke16.0 "$@"
     '';
 
+
+  # Farm container
+
+    ldSoConf = ''
+      include /etc/ld.so.conf.d/*.conf
+    '';
+    baseLdConf = ''
+      /lib
+      /lib64
+      /usr/lib
+      /usr/lib64
+    '';
+
+  mkFhsLdLayer =
+    { glibc ? pkgs.glibc }:
+    pkgs.runCommand "fhs-ld-layer" { inherit glibc ldSoConf baseLdConf; } ''
+      mkdir -p $out/etc/ld.so.conf.d
+      printf '%s\n' "${ldSoConf}" > $out/etc/ld.so.conf
+      printf '%s\n' "${baseLdConf}" > $out/etc/ld.so.conf.d/00-base.conf
+      : > $out/etc/ld.so.cache
+
+      glibcEtc="${glibc}/etc"
+      mkdir -p $out''${glibcEtc}
+      ln -sf /etc/ld.so.cache $out''${glibcEtc}/ld.so.cache
+      ln -sf /etc/ld.so.conf $out''${glibcEtc}/ld.so.conf
+      ln -sf /etc/ld.so.conf.d $out''${glibcEtc}/ld.so.conf.d
+
+      # Provide the dynamic linker at the legacy FHS locations so
+      # /lib64/ld-linux-x86-64.so.2 can be found by kernels inside the
+      # container when launching host Houdini binaries.
+      mkdir -p $out/lib $out/lib64
+      ln -sf ${glibc}/lib/ld-linux-x86-64.so.2 $out/lib/ld-linux-x86-64.so.2
+      ln -sf ${glibc}/lib/ld-linux-x86-64.so.2 $out/lib64/ld-linux-x86-64.so.2
+    '';
+
+  fhsLdLayer = mkFhsLdLayer { };
+  houdiniContainerImage =
+    pkgs.dockerTools.buildImage {
+      name = "houdini-runtime";
+      copyToRoot = pkgs.buildEnv {
+        name = "image-root";
+        paths = [ pkgs.bash fhsLdLayer ] ++ houdiniDeps;
+        pathsToLink = [ "/bin" "/usr/bin" "/usr/lib" "/usr/lib64" "/lib" "/lib64" "/etc" "/nix/store" ];
+      };
+      config = {
+        # Ensure basic utilities like dirname are reachable even when PATH
+        # is not populated by the caller environment.
+        Env = [ "PATH=/bin:/usr/bin:/usr/local/bin" ];
+      };
+    };
+
+
 in
 {
   inherit
     houdiniFhsEnv
     houdiniWrapper
     mplayWrapper
-    nukeWrapper;
+    nukeWrapper
+    houdiniContainerImage;
 }
