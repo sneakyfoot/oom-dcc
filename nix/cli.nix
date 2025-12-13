@@ -10,7 +10,6 @@ let
       export UV_NO_PYTHON_DOWNLOADS=1
       export UV_PROJECT_ENVIRONMENT=${uvProjectEnv}
       export UV_CACHE_DIR=/var/uv/cache
-      echo "[oom] Syncing deps"
       uv sync --project ${src} --frozen --no-dev
       echo "[oom] Setting up environment"
       uv run --project ${src} --frozen --no-dev --no-sync oom "$@" # &> /dev/null
