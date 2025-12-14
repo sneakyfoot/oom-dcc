@@ -108,7 +108,7 @@ in rec {
     export UV_PROJECT_ENVIRONMENT=${uvProjectEnv}
     export UV_CACHE_DIR=/var/uv/cache
     # mkdir -p "$UV_PROJECT_ENVIRONMENT" "$UV_CACHE_DIR"
-    uv sync --project ${src} --frozen --no-dev
+    # uv sync --project ${src} --frozen --no-dev
   '';
   dcc-runtime = 
     pkgs.buildFHSEnv {

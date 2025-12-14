@@ -29,7 +29,7 @@
       };
 
       houdini = import ./nix/houdini.nix {
-        inherit pkgs uvProjectEnv python uv src;
+        inherit pkgs uvProjectEnv tkCorePath python uv src;
         runtimePkgs = runtime.runtimePkgs;
         runtimeProfile = runtime.runtimeProfile;
       };

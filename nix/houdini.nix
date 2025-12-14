@@ -8,6 +8,7 @@
 , python
 , uv
 , src
+, tkCorePath
 }:
 
 let
@@ -69,17 +70,19 @@ let
     '';
 
 
-  # Farm container
+  ##################
+  # Farm container #
+  ##################
 
-    ldSoConf = ''
-      include /etc/ld.so.conf.d/*.conf
-    '';
-    baseLdConf = ''
-      /lib
-      /lib64
-      /usr/lib
-      /usr/lib64
-    '';
+  ldSoConf = ''
+    include /etc/ld.so.conf.d/*.conf
+  '';
+  baseLdConf = ''
+    /lib
+    /lib64
+    /usr/lib
+    /usr/lib64
+  '';
 
   mkFhsLdLayer =
     { glibc ? pkgs.glibc }:
@@ -101,21 +104,54 @@ let
       mkdir -p $out/lib $out/lib64
       ln -sf ${glibc}/lib/ld-linux-x86-64.so.2 $out/lib/ld-linux-x86-64.so.2
       ln -sf ${glibc}/lib/ld-linux-x86-64.so.2 $out/lib64/ld-linux-x86-64.so.2
+
     '';
 
   fhsLdLayer = mkFhsLdLayer { };
+
   houdiniContainerImage =
     pkgs.dockerTools.buildImage {
       name = "houdini-runtime";
+      tag = "testing";
       copyToRoot = pkgs.buildEnv {
         name = "image-root";
-        paths = [ pkgs.bash fhsLdLayer ] ++ houdiniDeps;
+        paths = [ pkgs.bash fhsLdLayer pkgs.fontconfig pkgs.git pkgs.openssh pkgs.cacert ] ++ houdiniDeps;
         pathsToLink = [ "/bin" "/usr/bin" "/usr/lib" "/usr/lib64" "/lib" "/lib64" "/etc" "/nix/store" ];
       };
+      runAsRoot = ''
+        mkdir -p /var/uv/venvs
+        mkdir -p /var/uv/cache
+        chmod 777 /var/uv/venvs
+        chmod 777 /var/uv/cache
+        '';
       config = {
         # Ensure basic utilities like dirname are reachable even when PATH
         # is not populated by the caller environment.
-        Env = [ "PATH=/bin:/usr/bin:/usr/local/bin" ];
+        Env = [
+          # "PATH=/bin:/usr/bin:/usr/local/bin"
+          # "LD_LIBRARY_PATH=${pkgs.ocl-icd}/lib:$LD_LIBRARY_PATH"
+          "NVIDIA_OPENCL=/run/opengl-driver/etc/OpenCL/vendors"
+          "INTEL_OPENCL=/etc/OpenCL/vendors"
+          "OPENCL_VENDOR_PATH=/run/opengl-driver/etc/OpenCL/vendors"
+          "OOM_CORE=${src}"
+          "OOM=${src}"
+          "SGTK_PATH=${tkCorePath}"
+          "UV_PYTHON=${uvPython}"
+          "UV_NO_MANAGED_PYTHON=1"
+          "UV_NO_PYTHON_DOWNLOADS=1"
+          "UV_PROJECT_ENVIRONMENT=${uvProjectEnv}"
+          "UV_CACHE_DIR=/var/uv/cache"
+          "HFS=${houdiniHostRoot}"
+          "HOUDINI_USE_HFS_OCL=0"
+          "HHP=${houdiniHostRoot}/houdini/python3.11libs"
+          "HOUDINI_PACKAGE_DIR=${packageDir}"
+          "SSL_CERT_FILE = ${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+          "NIX_SSL_CERT_FILE = ${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+          "REQUESTS_CA_BUNDLE = ${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+          "CURL_CA_BUNDLE = ${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+          "GIT_SSL_CAINFO = ${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+        ];
+        Entrypoint = [ "/bin/bash" ];
       };
     };
 
