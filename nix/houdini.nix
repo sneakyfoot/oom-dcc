@@ -102,10 +102,10 @@ let
       printf '%s\n' "$GITHUB_TOKEN" | podman login ghcr.io -u sneakyfoot --password-stdin
 
       podman tag "$image_ref" "''${registry_repo}:${shaTag}"
-      podman tag "$image_ref" "''${registry_repo}:testing"
+      podman tag "$image_ref" "''${registry_repo}:latest"
 
       podman push "''${registry_repo}:${shaTag}"
-      podman push "''${registry_repo}:testing"
+      podman push "''${registry_repo}:latest"
     '';
 
   ldSoConf = ''
