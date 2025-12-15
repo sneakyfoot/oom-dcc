@@ -172,8 +172,8 @@ let
       runAsRoot = ''
         mkdir -p /var/uv/venvs
         mkdir -p /var/uv/cache
-        chmod 777 /var/uv/venvs
-        chmod 777 /var/uv/cache
+        chmod -R 777 /var/uv/venvs
+        chmod -R 777 /var/uv/cache
         '';
       # Prebuilt venv is already in the image; extraCommands no longer needed.
       extraCommands = "";
