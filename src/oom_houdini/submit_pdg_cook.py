@@ -122,6 +122,8 @@ def build_service_job_manifest(
         "namespace": ns,
         "oom_repo": "oom-repo-pvc" if is_dev else "oom-repo-prod-pvc",
         "oom_dev": "'True'" if is_dev else "'False'",
+        # Tag for the runtime image (falls back to latest if unset/dirty)
+        "OOM_TAG": "latest" if "dirty" in os.environ.get("OOM_TAG", "") or not os.environ.get("OOM_TAG") else os.environ["OOM_TAG"],
         "uid": uid,
         "gid": gid,
         "command": command,

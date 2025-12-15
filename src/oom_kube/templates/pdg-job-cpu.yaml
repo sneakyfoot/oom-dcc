@@ -62,7 +62,7 @@ spec:
 
       containers:
         - name: main
-          image: ghcr.io/sneakyfoot/dcc-runtime:{ { OOM_TAG } }
+          image: "ghcr.io/sneakyfoot/dcc-runtime:{ { OOM_TAG | default('latest') } }"
           command:
             - /bin/bash
           args:

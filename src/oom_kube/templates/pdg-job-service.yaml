@@ -62,7 +62,7 @@ spec:
 
       containers:
         - name: service
-          image: ghcr.io/sneakyfoot/dcc-runtime:{ { OOM_TAG } }
+          image: "ghcr.io/sneakyfoot/dcc-runtime:{ { OOM_TAG | default('latest') } }"
           imagePullPolicy: Always
 
           command:

@@ -55,6 +55,14 @@ def _coerce_gpu(gpu: Optional[Union[str, int]]) -> int:
     return gpu_count
 
 
+def _resolve_tag() -> str:
+    tag = (os.environ.get("OOM_TAG") or "").strip()
+    # When developing on a dirty tree, fall back to the latest published image
+    if not tag or "dirty" in tag:
+        return "latest"
+    return tag
+
+
 def build_job_manifest(
     template: Optional[str],
     name: str,
@@ -89,10 +97,10 @@ def build_job_manifest(
         "OOM_SHOT_PATH",
         "CUT_IN",
         "CUT_OUT",
-        "OOM_TAG",
     ]
     for var in passthrough_vars:
         context[var] = os.environ.get(var, "")
+    context["OOM_TAG"] = _resolve_tag()
     context.update(
         {
             "uid": uid,
@@ -142,10 +150,10 @@ def build_service_job_manifest(
         "OOM_SHOT_PATH",
         "CUT_IN",
         "CUT_OUT",
-        "OOM_TAG",
     ]
     for var in passthrough_vars:
         context[var] = _os.environ.get(var, "")
+    context["OOM_TAG"] = _resolve_tag()
     context.update(
         {
             "uid": uid,
