@@ -109,14 +109,31 @@ let
 
   fhsLdLayer = mkFhsLdLayer { };
 
+  prebuiltUvEnv = pkgs.runCommand "oom-uv-env" {
+    buildInputs = [ uv python pkgs.cacert ];
+    SSL_CERT_FILE = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
+    NIX_SSL_CERT_FILE = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
+  } ''
+    set -euo pipefail
+
+    export UV_PYTHON=${uvPython}
+    export UV_NO_MANAGED_PYTHON=1
+    export UV_NO_PYTHON_DOWNLOADS=1
+    export UV_PROJECT_ENVIRONMENT=$out${uvProjectEnv}
+    export UV_CACHE_DIR=$TMPDIR/uv-cache
+
+    mkdir -p "$UV_PROJECT_ENVIRONMENT" "$UV_CACHE_DIR"
+    ${uv}/bin/uv sync --project ${src} --frozen --no-dev
+  '';
+
   houdiniContainerImage =
     pkgs.dockerTools.buildImage {
       name = "houdini-runtime";
       tag = "testing";
       copyToRoot = pkgs.buildEnv {
         name = "image-root";
-        paths = [ pkgs.bash fhsLdLayer pkgs.fontconfig pkgs.git pkgs.openssh pkgs.cacert ] ++ houdiniDeps;
-        pathsToLink = [ "/bin" "/usr/bin" "/usr/lib" "/usr/lib64" "/lib" "/lib64" "/etc" "/nix/store" ];
+        paths = [ pkgs.bash fhsLdLayer pkgs.git pkgs.openssh pkgs.cacert prebuiltUvEnv ] ++ houdiniDeps;
+        pathsToLink = [ "/bin" "/usr/bin" "/usr/lib" "/usr/lib64" "/lib" "/lib64" "/etc" "/var" "/nix/store" ];
       };
       runAsRoot = ''
         mkdir -p /var/uv/venvs
@@ -124,15 +141,18 @@ let
         chmod 777 /var/uv/venvs
         chmod 777 /var/uv/cache
         '';
+      # Prebuilt venv is already in the image; extraCommands no longer needed.
+      extraCommands = "";
       config = {
-        # Ensure basic utilities like dirname are reachable even when PATH
-        # is not populated by the caller environment.
         Env = [
           # "PATH=/bin:/usr/bin:/usr/local/bin"
-          # "LD_LIBRARY_PATH=${pkgs.ocl-icd}/lib:$LD_LIBRARY_PATH"
+          # Prefer system OpenCL (NVIDIA) over the bundled HFS libOpenCL.
+          "LD_LIBRARY_PATH=/lib:/run/opengl-driver/lib:${pkgs.ocl-icd}/lib"
           "NVIDIA_OPENCL=/run/opengl-driver/etc/OpenCL/vendors"
           "INTEL_OPENCL=/etc/OpenCL/vendors"
           "OPENCL_VENDOR_PATH=/run/opengl-driver/etc/OpenCL/vendors"
+          "HOUDINI_OCL_DEVICETYPE=GPU"
+          "HOUDINI_OCL_VENDOR="
           "OOM_CORE=${src}"
           "OOM=${src}"
           "SGTK_PATH=${tkCorePath}"
@@ -145,16 +165,15 @@ let
           "HOUDINI_USE_HFS_OCL=0"
           "HHP=${houdiniHostRoot}/houdini/python3.11libs"
           "HOUDINI_PACKAGE_DIR=${packageDir}"
-          "SSL_CERT_FILE = ${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
-          "NIX_SSL_CERT_FILE = ${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
-          "REQUESTS_CA_BUNDLE = ${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
-          "CURL_CA_BUNDLE = ${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
-          "GIT_SSL_CAINFO = ${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+          "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+          "NIX_SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+          "REQUESTS_CA_BUNDLE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+          "CURL_CA_BUNDLE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+          "GIT_SSL_CAINFO=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
         ];
         Entrypoint = [ "/bin/bash" ];
       };
     };
-
 
 in
 {

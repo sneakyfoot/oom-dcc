@@ -15,9 +15,11 @@ in rec {
     krb5
     alsa-lib
     fontconfig
+    fontconfig.lib
     zlib
     libpng
     dbus
+    dbus.lib
     nss
     nspr
     expat
@@ -44,7 +46,9 @@ in rec {
     intel-ocl
     numactl
     zstd
-    libdrm
+    # libdrm's default output is "bin"; add "out" so libdrm.so.* land in /lib
+    libdrm.out
+    libdrm.bin
     libxshmfence
     libxkbfile
 
@@ -108,7 +112,7 @@ in rec {
     export UV_PROJECT_ENVIRONMENT=${uvProjectEnv}
     export UV_CACHE_DIR=/var/uv/cache
     # mkdir -p "$UV_PROJECT_ENVIRONMENT" "$UV_CACHE_DIR"
-    # uv sync --project ${src} --frozen --no-dev
+    uv sync --project ${src} --frozen --no-dev
   '';
   dcc-runtime = 
     pkgs.buildFHSEnv {

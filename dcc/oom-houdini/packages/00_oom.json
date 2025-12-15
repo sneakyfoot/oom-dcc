@@ -29,6 +29,12 @@
 			}
 		},
 		{
+			"PYTHONPATH": {
+				"method": "append",
+				"value": "$SGTK_PATH"
+			}
+		},
+		{
 			"HOUDINI_PATH": {
 				"method": "append",
 				"value": "$HOUDINI_PACKAGE_PATH/oom"
