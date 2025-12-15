@@ -154,7 +154,7 @@ let
     export UV_NO_MANAGED_PYTHON=1
     export UV_NO_PYTHON_DOWNLOADS=1
     export UV_PROJECT_ENVIRONMENT=$out${uvProjectEnv}
-    export UV_CACHE_DIR=$TMPDIR/uv-cache
+    export UV_CACHE_DIR=$out/var/uv/cache
 
     mkdir -p "$UV_PROJECT_ENVIRONMENT" "$UV_CACHE_DIR"
     ${uv}/bin/uv sync --project ${src} --frozen --no-dev
@@ -185,6 +185,7 @@ let
           "NVIDIA_OPENCL=/run/opengl-driver/etc/OpenCL/vendors"
           "INTEL_OPENCL=/etc/OpenCL/vendors"
           "OPENCL_VENDOR_PATH=/run/opengl-driver/etc/OpenCL/vendors"
+          "HOUDINI_USE_HFS_OCL=0"
           "HOUDINI_OCL_DEVICETYPE=GPU"
           "HOUDINI_OCL_VENDOR="
           "OOM_CORE=${src}"
@@ -197,7 +198,6 @@ let
           "UV_PROJECT_ENVIRONMENT=${uvProjectEnv}"
           "UV_CACHE_DIR=/var/uv/cache"
           "HFS=${houdiniHostRoot}"
-          "HOUDINI_USE_HFS_OCL=0"
           "HHP=${houdiniHostRoot}/houdini/python3.11libs"
           "PDG_HYTHON=${houdiniHostRoot}/bin/hython"
           "PDG_PYTHON=${houdiniHostRoot}/python/bin/python"

@@ -78,9 +78,11 @@ spec:
             - name: OCIO
               value: /mnt/RAID/Assets/studio-config-v2.2.0_aces-v1.3_ocio-v2.3.ocio
             - name: HOUDINI_OCL_DEVICETYPE
-              value: "CPU"
+              value: CPU
+            - name: HOUDINI_OCL_VENDOR
+              value: Intel(R) Corporation
             - name: OPENCL_VENDOR_PATH
-              value: "/etc/OpenCL/vendors"
+              value: /etc/OpenCL/vendors
             - name: PDG_DIR
               value: { { pdg_dir } }
             - name: PDG_TEMP
