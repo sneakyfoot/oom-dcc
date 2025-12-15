@@ -39,24 +39,9 @@ spec:
 
       volumes:
         # PVCs
-        - name: oom-repo
-          persistentVolumeClaim:
-            claimName: { { oom_repo } }
-        - name: oom-venv
-          persistentVolumeClaim:
-            claimName: oom-venv-pvc
         - name: node-dev
           persistentVolumeClaim:
             claimName: node-dev-pvc
-        - name: houdini
-          persistentVolumeClaim:
-            claimName: houdini-latest-pvc
-        - name: nuke
-          persistentVolumeClaim:
-            claimName: nuke-latest-pvc
-        - name: 3de
-          persistentVolumeClaim:
-            claimName: 3de-latest-pvc
         # HostPaths
         - name: raid
           hostPath:
@@ -77,7 +62,7 @@ spec:
 
       containers:
         - name: service
-          image: ghcr.io/sneakyfoot/dcc-runtime:testing
+          image: ghcr.io/sneakyfoot/dcc-runtime:{ { OOM_TAG } }
           imagePullPolicy: Always
 
           command:
@@ -87,43 +72,18 @@ spec:
             - { { command } }
 
           env:
-            - name: OOM
-              value: { { oom_repo_path } }
-            - name: OOM_VENV
-              value: /var/uv/venvs/oom-dcc
             - name: OOM_DEV
               value: { { oom_dev } }
             - name: NODE_DEV
               value: /opt/node_dev
-            - name: HHP
-              value: { { hhp } }
             - name: OCIO
               value: /mnt/RAID/Assets/studio-config-v2.2.0_aces-v1.3_ocio-v2.3.ocio
-            - name: HOUDINI_PACKAGE_DIR
-              value: { { oom_repo_path } }/dcc/oom-houdini/packages
-            - name: HFS
-              value: /opt/houdini
-            - name: HOUDINI_USE_HFS_OCL
-              value: "1"
             - name: HOUDINI_OCL_DEVICETYPE
               value: CPU
             - name: HOUDINI_OCL_VENDOR
               value: Intel(R) Corporation
-            #            - name: PDG_DIR
-            #              value: { { pdg_dir } }
-            #            - name: PDG_TEMP
-            #              value: { { pdg_dir } }
-            #            - name: PDG_SCRIPTDIR
-            #              value: { { pdg_scripts } }
-            #            - name: PDG_ITEM_NAME
-            #              value: "{ { pdg_item_name } }"
-            #            - name: PDG_ITEM_ID
-            #              value: "{ { pdg_item } }"
-            #            - name: PDG_RESULT_SERVER
-            #              value: "{ { pdg_result_server } }"
-            #            - name: PDG_RESULT_CLIENT_ID
-            #              value: "{ { pdg_result_client_id } }"
-            # Passthrough project/shot context from submitting session
+            - name: OPENCL_VENDOR_PATH
+              value: /etc/OpenCL/vendors
             - name: OOM_PROJECT_ID
               value: "{ { OOM_PROJECT_ID } }"
             - name: OOM_PROJECT_PATH
@@ -145,18 +105,8 @@ spec:
 
           volumeMounts:
             # PVCs
-            - name: oom-repo
-              mountPath: { { oom_repo_path } }
-            - name: oom-venv
-              mountPath: /var/uv/venvs/oom-dcc
             - name: node-dev
               mountPath: /opt/node_dev
-            - name: houdini
-              mountPath: /opt/houdini
-            - name: nuke
-              mountPath: /opt/nuke
-            - name: 3de
-              mountPath: /opt/3de
             # HostPaths
             - name: raid
               mountPath: /mnt/RAID
