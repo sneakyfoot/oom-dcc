@@ -1,0 +1,110 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: houdini-runtime-test
+  namespace: dcc
+  labels:
+    app: dcc-runtime
+    oom/workload: pdg-gpu
+
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dcc-runtime
+  template:
+    metadata:
+      labels:
+        app: dcc-runtime
+
+    spec:
+      hostNetwork: true
+      hostPID: true
+      serviceAccountName: dcc-scheduler
+      restartPolicy: Always
+      dnsPolicy: ClusterFirstWithHostNet
+
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: oom/farm
+                    operator: In
+                    values:
+                      - "true"
+                  - key: oom/gpu
+                    operator: In
+                    values:
+                      - "true"
+      volumes:
+        # PVCs
+        - name: node-dev
+          persistentVolumeClaim:
+            claimName: node-dev-pvc
+        # HostPaths
+        - name: raid
+          hostPath:
+            path: /mnt/RAID
+            type: Directory
+        - name: home
+          hostPath:
+            path: /home
+            type: Directory
+        - name: passwd
+          hostPath:
+            path: /etc/passwd
+            type: File
+        - name: group
+          hostPath:
+            path: /etc/group
+            type: File
+
+      containers:
+        - name: main
+          image: ghcr.io/sneakyfoot/dcc-runtime:latest
+          imagePullPolicy: Always
+
+          command:
+            - /bin/bash
+            - -c
+            - sleep infinity
+
+          env:
+            - name: OOM_DEV
+              value: "1"
+            - name: NODE_DEV
+              value: /opt/node_dev
+            - name: OCIO
+              value: /mnt/RAID/Assets/studio-config-v2.2.0_aces-v1.3_ocio-v2.3.ocio
+
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 100
+
+          volumeMounts:
+            # PVCs
+            - name: node-dev
+              mountPath: /opt/node_dev
+            # HostPaths
+            - name: raid
+              mountPath: /mnt/RAID
+              readOnly: false
+            - name: home
+              mountPath: /home
+              readOnly: false
+            - name: passwd
+              mountPath: /etc/passwd
+              readOnly: true
+            - name: group
+              mountPath: /etc/group
+              readOnly: true
+
+          resources:
+            requests:
+              cpu: 4
+              memory: 8Gi
+              nvidia.com/gpu: 1
+            limits:
+              memory: 8Gi
+              nvidia.com/gpu: 1
