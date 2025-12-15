@@ -66,6 +66,7 @@
         houdini-fhs = houdini.houdiniFhsEnv;
         houdini = houdini.houdiniWrapper;
         houdini-container = houdini.houdiniContainerImage;
+        publish-houdini-container = houdini.publishHoudiniContainer;
         mplay = houdini.mplayWrapper;
         oom = cli.oom;
       };

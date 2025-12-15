@@ -76,8 +76,8 @@ let
   # Farm container #
   ##################
 
-  publishHoudiniImage = 
-    pkgs.writeShellScriptBin "publish-houdini-image" ''
+  publishHoudiniContainer = 
+    pkgs.writeShellScriptBin "publish-houdini-container" ''
       set -euo pipefail
 
       : "''${GITHUB_TOKEN:?GITHUB_TOKEN must be set to push to ghcr.io}"
@@ -216,5 +216,5 @@ in
     mplayWrapper
     nukeWrapper
     houdiniContainerImage
-    publishHoudiniImage;
+    publishHoudiniContainer;
 }
