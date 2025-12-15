@@ -174,6 +174,9 @@ let
         mkdir -p /var/uv/cache
         chmod -R 777 /var/uv/venvs
         chmod -R 777 /var/uv/cache
+        # Ensure world-writable tmp so tk-core git descriptors can clone/resolve
+        mkdir -p /tmp /var/tmp /usr/tmp
+        chmod 1777 /tmp /var/tmp /usr/tmp
         '';
       # Prebuilt venv is already in the image; extraCommands no longer needed.
       extraCommands = "";
