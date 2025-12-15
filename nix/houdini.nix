@@ -27,6 +27,8 @@ let
     export HOUDINI_PATH="$HFS/houdini:&"
     export HOUDINI_USE_HFS_OCL=0
     export HHP="$HFS/houdini/python3.11libs"
+    export PDG_HYTHON="$HFS/bin/hython"
+    export PDG_PYTHON="$HFS/python/bin/python"
     export HOUDINI_PACKAGE_DIR=${packageDir}
     export OOM_TAG=${shaTag}
   '';
@@ -197,6 +199,8 @@ let
           "HFS=${houdiniHostRoot}"
           "HOUDINI_USE_HFS_OCL=0"
           "HHP=${houdiniHostRoot}/houdini/python3.11libs"
+          "PDG_HYTHON=${houdiniHostRoot}/bin/hython"
+          "PDG_PYTHON=${houdiniHostRoot}/python/bin/python"
           "HOUDINI_PACKAGE_DIR=${packageDir}"
           "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
           "NIX_SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"

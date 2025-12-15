@@ -94,9 +94,6 @@ class JobSubmitter:
             _log_exception("submit_work_item:get_priority_class", exc)
             priority_class = "farm-default"
 
-        # Pick up HHP from current environment if available
-        hhp = os.environ.get("HHP", "")
-
         # Resolve optional CPU/RAM requests from scheduler parms
         try:
             cpu_cores = getattr(owner, "get_cpu_cores", lambda: 0)()
@@ -131,7 +128,6 @@ class JobSubmitter:
             mem_arg,
             gpu=gpu_flag,
             priority_class=priority_class,
-            hhp=hhp,
         )
 
         load_kube()
