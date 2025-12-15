@@ -10,8 +10,12 @@ print('[oom] Running Startup Script')
 # set shotgun home env var for shared /home
 hostname = socket.gethostname()
 os.environ["SHOTGUN_HOME"] = os.path.expanduser(f"~/.shotgun-{hostname}")
-os.environ["SSL_CERT_FILE"] = "/mnt/RAID/Assets/shotgun/certs/cacert.pem"
-print(f"[oom] Set SSL Cert for hou, and SHOTGUN_HOME set for {hostname}")
+# Only supply the facility cert bundle when none is set (avoid clobbering the
+# system/Nix bundle needed for GitHub, etc.).
+if not os.environ.get("SSL_CERT_FILE"):
+    os.environ["SSL_CERT_FILE"] = "/mnt/RAID/Assets/shotgun/certs/cacert.pem"
+
+print(f"[oom] SHOTGUN_HOME set for {hostname}")
 
 # Get context from environment
 project_id = os.getenv("OOM_PROJECT_ID")
