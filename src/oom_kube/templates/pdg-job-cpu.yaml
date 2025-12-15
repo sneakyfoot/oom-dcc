@@ -37,31 +37,11 @@ spec:
                     operator: In
                     values:
                       - "true"
-
       volumes:
-        # Houdini Temp
-        - name: houdini-temp
-          persistentVolumeClaim:
-            claimName: houdini-temp-cpu
         # PVCs
-        - name: oom-repo
-          persistentVolumeClaim:
-            claimName: { { oom_repo } }
-        - name: oom-venv
-          persistentVolumeClaim:
-            claimName: oom-venv-pvc
         - name: node-dev
           persistentVolumeClaim:
             claimName: node-dev-pvc
-        - name: houdini
-          persistentVolumeClaim:
-            claimName: houdini-latest-pvc
-        - name: nuke
-          persistentVolumeClaim:
-            claimName: nuke-latest-pvc
-        - name: 3de
-          persistentVolumeClaim:
-            claimName: 3de-latest-pvc
         # HostPaths
         - name: raid
           hostPath:
@@ -82,9 +62,7 @@ spec:
 
       containers:
         - name: main
-          image: ghcr.io/sneakyfoot/dcc-runtime:testing
-          imagePullPolicy: Always
-
+          image: ghcr.io/sneakyfoot/dcc-runtime:{ { OOM_TAG } }
           command:
             - /bin/bash
           args:
@@ -93,28 +71,16 @@ spec:
 { { command | indent(14, True) } }
 
           env:
-            - name: OOM
-              value: { { oom_repo_path } }
-            - name: OOM_VENV
-              value: /var/uv/venvs/oom-dcc
             - name: OOM_DEV
               value: { { oom_dev } }
             - name: NODE_DEV
               value: /opt/node_dev
             - name: OCIO
               value: /mnt/RAID/Assets/studio-config-v2.2.0_aces-v1.3_ocio-v2.3.ocio
-            - name: HOUDINI_PACKAGE_DIR
-              value: { { oom_repo_path } }/dcc/oom-houdini/packages
             - name: HOUDINI_USE_HFS_OCL
               value: "1"
             - name: HOUDINI_OCL_DEVICETYPE
-              value: CPU
-            - name: HOUDINI_OCL_VENDOR
-              value: Intel(R) Corporation
-            - name: HFS
-              value: /opt/houdini
-            - name: PYTHONHOME
-              value: /opt/houdini/python
+              value: "CPU"
             - name: PDG_DIR
               value: { { pdg_dir } }
             - name: PDG_TEMP
@@ -129,6 +95,7 @@ spec:
               value: "{ { pdg_result_client_id } }"
             - name: PDG_JOBUSE_PDGNET
               value: "1"
+            # Force PDGNet RPC delegate and sane timeouts
             - name: PDG_RPC_DELEGATE
               value: pdgjob.pdgnetrpc
             - name: PDG_RPC_RETRIES
@@ -166,22 +133,9 @@ spec:
             runAsGroup: { { gid } }
 
           volumeMounts:
-            # Houdini Temp
-            - name: houdini-temp
-              mountPath: /tmp/houdini_temp
             # PVCs
-            - name: oom-repo
-              mountPath: { { oom_repo_path } }
-            - name: oom-venv
-              mountPath: /var/uv/venvs/oom-dcc
             - name: node-dev
               mountPath: /opt/node_dev
-            - name: houdini
-              mountPath: /opt/houdini
-            - name: nuke
-              mountPath: /opt/nuke
-            - name: 3de
-              mountPath: /opt/3de
             # HostPaths
             - name: raid
               mountPath: /mnt/RAID

@@ -20,13 +20,10 @@ def _render_template(template: str, context: dict) -> dict:
 
 def _base_context(name: str, ns: str) -> dict:
     is_dev = dev_mode()
-    repo_path = os.environ.get("OOM", "/workspace/oom-dcc")
     return {
         "job_name": name,
         "namespace": ns,
-        "oom_repo": "oom-repo-pvc" if is_dev else "oom-repo-prod-pvc",
         "oom_dev": "'True'" if is_dev else "'False'",
-        "oom_repo_path": repo_path,
     }
 
 
@@ -75,7 +72,6 @@ def build_job_manifest(
     mem_gi: Optional[str],
     gpu: Union[int, str, None] = 0,
     priority_class: Optional[str] = "farm-default",
-    hhp: Optional[str] = None,
 ) -> dict:
     gpu_count = _coerce_gpu(gpu)
     resolved_template = template or (GPU_TEMPLATE if gpu_count > 0 else CPU_TEMPLATE)
@@ -93,6 +89,7 @@ def build_job_manifest(
         "OOM_SHOT_PATH",
         "CUT_IN",
         "CUT_OUT",
+        "OOM_TAG",
     ]
     for var in passthrough_vars:
         context[var] = os.environ.get(var, "")
@@ -111,7 +108,6 @@ def build_job_manifest(
             "pdg_item": pdg_item,
             "pdg_result_server": pdg_result_server or "",
             "pdg_result_client_id": pdg_result_client_id or "",
-            "hhp": hhp or "",
         }
     )
 
@@ -132,7 +128,6 @@ def build_service_job_manifest(
     pdg_item: str = "",
     pdg_result_server: Optional[str] = None,
     pdg_result_client_id: Optional[str] = None,
-    hhp: Optional[str] = None,
 ) -> dict:
     resolved_template = template or SERVICE_TEMPLATE
 
@@ -147,6 +142,7 @@ def build_service_job_manifest(
         "OOM_SHOT_PATH",
         "CUT_IN",
         "CUT_OUT",
+        "OOM_TAG",
     ]
     for var in passthrough_vars:
         context[var] = _os.environ.get(var, "")
@@ -161,7 +157,6 @@ def build_service_job_manifest(
             "pdg_item": pdg_item or "",
             "pdg_result_server": pdg_result_server or "",
             "pdg_result_client_id": pdg_result_client_id or "",
-            "hhp": hhp or "",
         }
     )
 

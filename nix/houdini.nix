@@ -9,6 +9,7 @@
 , uv
 , src
 , tkCorePath
+, shaTag
 }:
 
 let
@@ -27,6 +28,7 @@ let
     export HOUDINI_USE_HFS_OCL=0
     export HHP="$HFS/houdini/python3.11libs"
     export HOUDINI_PACKAGE_DIR=${packageDir}
+    export OOM_TAG=${shaTag}
   '';
 
   houdiniHostProfile = mkHoudiniProfile {
@@ -73,6 +75,36 @@ let
   ##################
   # Farm container #
   ##################
+
+  publishHoudiniImage = 
+    pkgs.writeShellScriptBin "publish-houdini-image" ''
+      set -euo pipefail
+
+      : "''${GITHUB_TOKEN:?GITHUB_TOKEN must be set to push to ghcr.io}"
+
+      repo_root="$(git rev-parse --show-toplevel 2>/dev/null || printf '%s\n' "$PWD")"
+      flake_ref="''${FLAKE_REF:-$repo_root}"
+
+      image_tarball="$(nix build "''${flake_ref}#houdini-container" --impure --option sandbox false --no-link --print-out-paths)"
+      load_output="$(podman load --input "$image_tarball")"
+      image_ref="$(printf '%s\n' "$load_output" | sed -nE 's/^Loaded image(s)?: //p' | tail -n 1)"
+
+      if [ -z "$image_ref" ]; then
+        echo "Unable to determine image reference from podman load output:" >&2
+        printf '%s\n' "$load_output" >&2
+        exit 1
+      fi
+
+      registry_repo="ghcr.io/sneakyfoot/dcc-runtime"
+
+      printf '%s\n' "$GITHUB_TOKEN" | podman login ghcr.io -u sneakyfoot --password-stdin
+
+      podman tag "$image_ref" "''${registry_repo}:${shaTag}"
+      podman tag "$image_ref" "''${registry_repo}:testing"
+
+      podman push "''${registry_repo}:${shaTag}"
+      podman push "''${registry_repo}:testing"
+    '';
 
   ldSoConf = ''
     include /etc/ld.so.conf.d/*.conf
@@ -129,7 +161,7 @@ let
   houdiniContainerImage =
     pkgs.dockerTools.buildImage {
       name = "houdini-runtime";
-      tag = "testing";
+      tag = "${shaTag}";
       copyToRoot = pkgs.buildEnv {
         name = "image-root";
         paths = [ pkgs.bash fhsLdLayer pkgs.git pkgs.openssh pkgs.cacert prebuiltUvEnv ] ++ houdiniDeps;
@@ -155,6 +187,7 @@ let
           "HOUDINI_OCL_VENDOR="
           "OOM_CORE=${src}"
           "OOM=${src}"
+          "OOM_TAG=${shaTag}"
           "SGTK_PATH=${tkCorePath}"
           "UV_PYTHON=${uvPython}"
           "UV_NO_MANAGED_PYTHON=1"
@@ -182,5 +215,6 @@ in
     houdiniWrapper
     mplayWrapper
     nukeWrapper
-    houdiniContainerImage;
+    houdiniContainerImage
+    publishHoudiniImage;
 }

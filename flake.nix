@@ -18,6 +18,10 @@
 
       src = pkgs.lib.cleanSource ./.;
 
+      shaTag =
+        self.shortRev
+        or self.dirtyShortRev;
+
       python = pkgs.python311;
       uv = pkgs.uv;
 
@@ -29,7 +33,7 @@
       };
 
       houdini = import ./nix/houdini.nix {
-        inherit pkgs uvProjectEnv tkCorePath python uv src;
+        inherit pkgs uvProjectEnv tkCorePath python uv src shaTag;
         runtimePkgs = runtime.runtimePkgs;
         runtimeProfile = runtime.runtimeProfile;
       };
