@@ -5,7 +5,7 @@
 	"path": "$HOUDINI_PACKAGE_PATH/oom",
 	"env": [
 		{
-			"UV_PROJECT_ENVIRONMENT": "/var/uv/venvs/oom-dcc"
+			"UV_PROJECT_ENVIRONMENT": "$UV_PROJECT_ENVIRONMENT"
 		},
 		{
 			"OOM_HOUDINI": "$OOM/dcc/oom-houdini/packages/oom"

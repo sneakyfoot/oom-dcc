@@ -101,17 +101,24 @@ in rec {
 
     export OOM_CORE=${src}
 
-    export PYTHONPATH=${uvProjectEnv}/lib/python3.11/site-packages:$PYTHONPATH
-    export PYTHONPATH=${tkCorePath}:$PYTHONPATH
-    export SGTK_PATH=${tkCorePath}
+    if [ -z "''${UV_PROJECT_ENVIRONMENT:-}" ]; then
+      UV_PROJECT_ENVIRONMENT="$HOME/.cache/uv/venvs/oom-dcc"
+    fi
+    if [ -z "''${UV_CACHE_DIR:-}" ]; then
+      UV_CACHE_DIR="$HOME/.cache/uv/cache"
+    fi
 
     # uv defaults (adjustable by caller)
     export UV_PYTHON=${uvPython}
     export UV_NO_MANAGED_PYTHON=1
     export UV_NO_PYTHON_DOWNLOADS=1
-    export UV_PROJECT_ENVIRONMENT=${uvProjectEnv}
-    export UV_CACHE_DIR=/var/uv/cache
-    # mkdir -p "$UV_PROJECT_ENVIRONMENT" "$UV_CACHE_DIR"
+    export UV_PROJECT_ENVIRONMENT
+    export UV_CACHE_DIR
+
+    export PYTHONPATH="''${UV_PROJECT_ENVIRONMENT}/lib/python3.11/site-packages:$PYTHONPATH"
+    export PYTHONPATH=${tkCorePath}:$PYTHONPATH
+    export SGTK_PATH=${tkCorePath}
+
     uv sync --project ${src} --frozen --no-dev
   '';
   dcc-runtime = 

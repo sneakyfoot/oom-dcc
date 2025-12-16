@@ -4,7 +4,8 @@ if not _root:
     _root = pathlib.Path(__file__).resolve().parents[6]
 else:
     _root = pathlib.Path(_root)
-_uv = os.environ.get("UV_PROJECT_ENVIRONMENT", "/var/uv/venvs/oom-dcc")
+_uv_default = pathlib.Path.home() / ".cache" / "uv" / "venvs" / "oom-dcc"
+_uv = os.environ.get("UV_PROJECT_ENVIRONMENT", str(_uv_default))
 _paths = [
     pathlib.Path(_uv) / "lib" / f"python{sys.version_info.major}.{sys.version_info.minor}" / "site-packages",
     _root / "src",
