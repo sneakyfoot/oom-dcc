@@ -1,5 +1,7 @@
-from typing import Optional, Union
+import getpass
 import os
+from typing import Optional, Union
+
 import yaml
 
 from oom_kube.helpers import dev_mode, load_environment, normalize_cpu
@@ -20,10 +22,12 @@ def _render_template(template: str, context: dict) -> dict:
 
 def _base_context(name: str, ns: str) -> dict:
     is_dev = dev_mode()
+    username = getpass.getuser()
     return {
         "job_name": name,
         "namespace": ns,
         "oom_dev": "'True'" if is_dev else "'False'",
+        "username": username,
     }
 
 
@@ -142,6 +146,7 @@ def build_service_job_manifest(
     context = _base_context(name, ns)
     # Pass-through selected environment variables from the submitting session
     import os as _os
+
     passthrough_vars = [
         "OOM_PROJECT_ID",
         "OOM_PROJECT_PATH",

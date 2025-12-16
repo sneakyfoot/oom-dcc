@@ -7,6 +7,7 @@ metadata:
     app: dcc-runtime
     managed-by: oom-scheduler
     oom/workload: pdg-cpu
+    oom/artist: { { username } }
 
 spec:
   ttlSecondsAfterFinished: 86400
@@ -19,6 +20,7 @@ spec:
         app: dcc-runtime
         managed-by: oom-scheduler
         oom-bubble-job: { { job_name } }
+        oom/artist: { { username } }
 
     spec:
       hostNetwork: true

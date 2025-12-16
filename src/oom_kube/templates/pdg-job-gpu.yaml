@@ -6,6 +6,7 @@ metadata:
   labels:
     app: dcc-runtime
     managed-by: oom-scheduler
+    oom/artist: { { username } }
     oom/workload: pdg-gpu
 
 spec:
@@ -19,6 +20,7 @@ spec:
         app: dcc-runtime
         managed-by: oom-scheduler
         oom-bubble-job: { { job_name } }
+        oom/artist: { { username } }
 
     spec:
       hostNetwork: true
