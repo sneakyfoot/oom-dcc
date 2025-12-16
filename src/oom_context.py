@@ -2,10 +2,11 @@ import os
 import socket
 import sys
 
+# ruff: noqa: I001
+import oom_sg_tk
 import sgtk
 
 import oom_sg_auth
-import oom_sg_tk
 from oom_bootstrap import bootstrap
 
 
