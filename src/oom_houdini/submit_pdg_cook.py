@@ -9,6 +9,7 @@ Houdini/PDG during a simple submit action.
 from __future__ import annotations
 
 import argparse
+import getpass
 import json
 import os
 import shlex
@@ -20,8 +21,7 @@ from typing import Optional
 
 import yaml
 
-from oom_kube.helpers import dev_mode, load_environment, create_job, load_kube
-
+from oom_kube.helpers import create_job, dev_mode, load_environment, load_kube
 
 DEFAULT_NAMESPACE = "dcc"
 DEFAULT_HFS = "/opt/houdini"
@@ -104,15 +104,16 @@ def build_service_job_manifest(
     name: str,
     ns: str,
     command: str,
-#    pdg_dir: str,
-#    pdg_scripts: str,
+    #    pdg_dir: str,
+    #    pdg_scripts: str,
     uid: int,
     gid: int,
+    username: str,
     *,
-#    pdg_item_name: str = "",
-#    pdg_item: str = "",
-#    pdg_result_server: Optional[str] = None,
-#    pdg_result_client_id: Optional[str] = None,
+    #    pdg_item_name: str = "",
+    #    pdg_item: str = "",
+    #    pdg_result_server: Optional[str] = None,
+    #    pdg_result_client_id: Optional[str] = None,
     hhp: Optional[str] = None,
 ) -> dict:
     # Base context without touching the scheduler package
@@ -123,16 +124,18 @@ def build_service_job_manifest(
         "oom_repo": "oom-repo-pvc" if is_dev else "oom-repo-prod-pvc",
         "oom_dev": "'True'" if is_dev else "'False'",
         # Tag for the runtime image (falls back to latest if unset/dirty)
-        "OOM_TAG": "latest" if "dirty" in os.environ.get("OOM_TAG", "") or not os.environ.get("OOM_TAG") else os.environ["OOM_TAG"],
+        "OOM_TAG": "latest"
+        if "dirty" in os.environ.get("OOM_TAG", "") or not os.environ.get("OOM_TAG")
+        else os.environ["OOM_TAG"],
         "uid": uid,
         "gid": gid,
         "command": command,
-#        "pdg_dir": pdg_dir,
-#        "pdg_scripts": pdg_scripts,
-#        "pdg_item_name": pdg_item_name or "",
-#        "pdg_item": pdg_item or "",
-#        "pdg_result_server": pdg_result_server or "",
-#        "pdg_result_client_id": pdg_result_client_id or "",
+        #        "pdg_dir": pdg_dir,
+        #        "pdg_scripts": pdg_scripts,
+        #        "pdg_item_name": pdg_item_name or "",
+        #        "pdg_item": pdg_item or "",
+        #        "pdg_result_server": pdg_result_server or "",
+        #        "pdg_result_client_id": pdg_result_client_id or "",
         "hhp": hhp or "",
     }
     # Pass-through selected environment variables from the submitting session
@@ -177,13 +180,33 @@ def build_controller_cmd(hip: Path, node: str, *, hfs: str, hip_dir: str) -> str
 
 
 def main(argv: list[str]) -> int:
-    parser = argparse.ArgumentParser(description="Submit headless PDG cook (controller job)")
-    parser.add_argument("--hip", required=True, help="Absolute path to the .hip/.hiplc file")
-    parser.add_argument("--node", required=True, help="TOP/PDG node path (e.g. /obj/topnet1)")
-    parser.add_argument("--cpu", default=None, help="Deprecated; service jobs do not request CPU explicitly")
-    parser.add_argument("--ram", default=None, help="Deprecated; service jobs do not request memory explicitly")
-    parser.add_argument("--gpu", default="0", help="Deprecated; service jobs must use 0 GPUs")
-    parser.add_argument("--namespace", default=None, help="Kubernetes namespace (env OOM_PDG_NAMESPACE or dcc)")
+    parser = argparse.ArgumentParser(
+        description="Submit headless PDG cook (controller job)"
+    )
+    parser.add_argument(
+        "--hip", required=True, help="Absolute path to the .hip/.hiplc file"
+    )
+    parser.add_argument(
+        "--node", required=True, help="TOP/PDG node path (e.g. /obj/topnet1)"
+    )
+    parser.add_argument(
+        "--cpu",
+        default=None,
+        help="Deprecated; service jobs do not request CPU explicitly",
+    )
+    parser.add_argument(
+        "--ram",
+        default=None,
+        help="Deprecated; service jobs do not request memory explicitly",
+    )
+    parser.add_argument(
+        "--gpu", default="0", help="Deprecated; service jobs must use 0 GPUs"
+    )
+    parser.add_argument(
+        "--namespace",
+        default=None,
+        help="Kubernetes namespace (env OOM_PDG_NAMESPACE or dcc)",
+    )
     parser.add_argument("--name", default=None, help="Optional job name override")
     args = parser.parse_args(argv)
 
@@ -206,7 +229,9 @@ def main(argv: list[str]) -> int:
     parse_gpu_arg(args.gpu)
     uid, gid = resolve_uid_gid()
 
-    namespace = (args.namespace or os.environ.get("OOM_PDG_NAMESPACE") or DEFAULT_NAMESPACE).strip()
+    namespace = (
+        args.namespace or os.environ.get("OOM_PDG_NAMESPACE") or DEFAULT_NAMESPACE
+    ).strip()
     if not namespace:
         namespace = DEFAULT_NAMESPACE
 
@@ -214,25 +239,30 @@ def main(argv: list[str]) -> int:
     job_name = sanitize_job_name(job_name_input)
 
     hfs = os.environ.get("HFS", DEFAULT_HFS).strip() or DEFAULT_HFS
-    command = build_controller_cmd(hip_path, node_path, hfs=hfs, hip_dir=hip_path.parent.as_posix())
+    command = build_controller_cmd(
+        hip_path, node_path, hfs=hfs, hip_dir=hip_path.parent.as_posix()
+    )
 
     manifest = build_service_job_manifest(
         name=job_name,
         ns=namespace,
         command=command,
-#        pdg_dir=base_dir,
-#        pdg_scripts=scripts_dir,
+        username=getpass.getuser(),
+        #        pdg_dir=base_dir,
+        #        pdg_scripts=scripts_dir,
         uid=uid,
         gid=gid,
-#        pdg_item_name="controller",
-#        pdg_item="controller",
+        #        pdg_item_name="controller",
+        #        pdg_item="controller",
         hhp=os.environ.get("HHP", ""),
     )
 
     try:
         from kubernetes import client
     except ImportError as exc:
-        raise SystemExit("The 'kubernetes' Python package is required to submit jobs") from exc
+        raise SystemExit(
+            "The 'kubernetes' Python package is required to submit jobs"
+        ) from exc
 
     load_kube()
     batch_api = client.BatchV1Api()
@@ -247,8 +277,9 @@ if __name__ == "__main__":
 
 
 # Function Defs
-def submit_controller_job(hip: str, node: str, *, namespace: Optional[str] = None, name: Optional[str] = None):
-
+def submit_controller_job(
+    hip: str, node: str, *, namespace: Optional[str] = None, name: Optional[str] = None
+):
     # Validate inputs
     hip_path = Path(hip).expanduser().resolve()
     if not hip_path.is_file():
@@ -267,25 +298,33 @@ def submit_controller_job(hip: str, node: str, *, namespace: Optional[str] = Non
         return False, f"Failed resolving UID/GID: {e}"
 
     # Namespace + job name
-    ns = (namespace or os.environ.get("OOM_PDG_NAMESPACE") or DEFAULT_NAMESPACE).strip() or DEFAULT_NAMESPACE
+    ns = (
+        namespace or os.environ.get("OOM_PDG_NAMESPACE") or DEFAULT_NAMESPACE
+    ).strip() or DEFAULT_NAMESPACE
     job_name_input = name or f"pdg-ctrl-{cook_id}"
     job_name = sanitize_job_name(job_name_input)
 
+    # get submission username
+    username = getpass.getuser()
+
     # Build controller command (runs hython in the pod)
     hfs = os.environ.get("HFS", DEFAULT_HFS).strip() or DEFAULT_HFS
-    command = build_controller_cmd(hip_path, node_path, hfs=hfs, hip_dir=hip_path.parent.as_posix())
+    command = build_controller_cmd(
+        hip_path, node_path, hfs=hfs, hip_dir=hip_path.parent.as_posix()
+    )
 
     # Build manifest
     manifest = build_service_job_manifest(
         name=job_name,
         ns=ns,
+        username=username,
         command=command,
-#         pdg_dir=base_dir,
-#         pdg_scripts=scripts_dir,
+        #         pdg_dir=base_dir,
+        #         pdg_scripts=scripts_dir,
         uid=uid,
         gid=gid,
-#        pdg_item_name="controller",
-#        pdg_item="controller",
+        #        pdg_item_name="controller",
+        #        pdg_item="controller",
         hhp=os.environ.get("HHP", ""),
     )
 
