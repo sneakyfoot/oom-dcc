@@ -60,6 +60,10 @@ def _coerce_gpu(gpu: Optional[Union[str, int]]) -> int:
 
 
 def _resolve_tag() -> str:
+    """
+    Resolve pipeline version hash from OOM_TAG environment variable.
+    Using 'latest' when not set or dirty.
+    """
     tag = (os.environ.get("OOM_TAG") or "").strip()
     # When developing on a dirty tree, fall back to the latest published image
     if not tag or "dirty" in tag:
