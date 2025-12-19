@@ -39,6 +39,10 @@ spec:
                     operator: In
                     values:
                       - "true"
+                  - key: oom/schedulable
+                    operator: In
+                    values:
+                      - "true"
       volumes:
         # PVCs
         - name: node-dev
