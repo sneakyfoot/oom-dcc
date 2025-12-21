@@ -6,18 +6,22 @@ startup script. The bootstrap stores ``oom_tk`` and ``oom_context`` on
 publishes.
 """
 
-import hou
-from typing import List, Optional
 import ast
 import os
-from oom_houdini.sg_template_utils import build_template_fields
+from typing import List, Optional
 
+import hou
+
+from oom_houdini.sg_template_utils import build_template_fields
 
 CACHE_TEMPLATE_NAME = "oom_houdini_cache"
 # Default PublishedFileType code for generic Houdini cache publishes
 CACHE_PUBLISHED_TYPE_CODE = "oom_houdini_cache"
 
-def get_versions(cache_name: str, published_file_type: Optional[str] = None) -> List[int]:
+
+def get_versions(
+    cache_name: str, published_file_type: Optional[str] = None
+) -> List[int]:
     """Return sorted ints of published versions (or []).
 
     If ``published_file_type`` is provided, restricts the search to that
@@ -25,30 +29,42 @@ def get_versions(cache_name: str, published_file_type: Optional[str] = None) -> 
     ``"oom_usd_publish"``). This avoids cross-type collisions when different
     publishes share the same code/name.
     """
-    tk  = hou.session.oom_tk
+    tk = hou.session.oom_tk
     ctx = hou.session.oom_context
-    sg  = tk.shotgun
+    sg = tk.shotgun
 
-    filters = [["project", "is", ctx.project],
-               ["entity",  "is", ctx.entity],
-               ["code",    "is", cache_name]]
+    filters = [
+        ["project", "is", ctx.project],
+        ["entity", "is", ctx.entity],
+        ["code", "is", cache_name],
+    ]
 
     if published_file_type:
-        pf = sg.find_one("PublishedFileType",
-                         [["code", "is", published_file_type]], ["id"]) 
+        pf = sg.find_one(
+            "PublishedFileType", [["code", "is", published_file_type]], ["id"]
+        )
         if pf:
-            filters.insert(2, [
-                "published_file_type", "is", {"type": "PublishedFileType", "id": pf["id"]}
-            ])
+            filters.insert(
+                2,
+                [
+                    "published_file_type",
+                    "is",
+                    {"type": "PublishedFileType", "id": pf["id"]},
+                ],
+            )
 
-    pubs = sg.find("PublishedFile", filters, ["version_number"]) 
-    return sorted({p["version_number"] for p in pubs if p.get("version_number") is not None})
+    pubs = sg.find("PublishedFile", filters, ["version_number"])
+    return sorted(
+        {p["version_number"] for p in pubs if p.get("version_number") is not None}
+    )
+
 
 def cache_versions_update(cache_name, versions):
     if not hasattr(hou.session, "oom_cache_versions"):
         hou.session.oom_cache_versions = {}
 
     hou.session.oom_cache_versions[cache_name] = versions
+
 
 def ensure_spare_versions_initialized(node, versions):
     """Seed spare/version parms so menu callbacks don't fail on new nodes."""
@@ -60,18 +76,21 @@ def ensure_spare_versions_initialized(node, versions):
         node.parm("version").set(0)
     return versions
 
+
 def store_versions(node, versions):
     versions = str(versions)
     node.parm("spare_versions").set(versions)
     return
 
-def store_selected(node = None):
+
+def store_selected(node=None):
     if node is None:
         node = hou.pwd()
     selected = node.parm("version").evalAsString()
     node.parm("selected_version").set(selected)
     return
-    
+
+
 def restore_selected(node=None):
     if node is None:
         node = hou.pwd()
@@ -96,13 +115,15 @@ def restore_selected(node=None):
     node.parm("version").set(index)
     return
 
+
 def refresh_versions(kwargs):
     node = kwargs["node"]
     cache_name = node.parm("name").eval()
     versions = get_versions(cache_name, CACHE_PUBLISHED_TYPE_CODE)
-    store_versions(node,versions)
+    store_versions(node, versions)
     cache_versions_update(cache_name, versions)
     restore_selected(node)
+
 
 def populate_cache(kwargs: dict) -> None:
     """Callback for the cache HDA name parameter.
@@ -118,41 +139,45 @@ def populate_cache(kwargs: dict) -> None:
     print("Debug Localization")
     print(cache_name)
     if str(cache_name).strip() == "0":
-        print('Localize')
-        cache_name = node.parm('name').eval()
+        print("Localize")
+        cache_name = node.parm("name").eval()
         print(cache_name)
 
     # build template fields (Step, name, frame/version defaults)
-    fields = build_template_fields(template, publish_name=cache_name, include_frame=True)
+    fields = build_template_fields(
+        template, publish_name=cache_name, include_frame=True
+    )
     # cache templates may include a wedge token; set a placeholder so apply works
     fields["wedge"] = 1
-    try: 
+    try:
         raw = template.apply_fields(fields)
     except Exception as e:
-        hou.ui.displayMessage("Failed to set path. Are you inisde a blank scene?")
+        hou.ui.displayMessage(
+            "Failed to set path. Are you inisde a blank scene: " + str(e)
+        )
         return
-    
+
     # construct houdini path
     dir_path, fname = os.path.split(raw)
     dirs = dir_path.split(os.sep)
-    dirs[-1] = '`chs("version")`'           # version folder
+    dirs[-1] = '`chs("version")`'  # version folder
     dir_expr = os.sep.join(dirs)
 
-    base, wedge_tok, rest = fname.split('.', 2)
-    file_expr = f"{base}.`chs(\"wedge_index\")`.$F4.{rest.split('.',1)[1]}"
+    base, wedge_tok, rest = fname.split(".", 2)
+    file_expr = f'{base}.`chs("wedge_index")`.$F4.{rest.split(".", 1)[1]}'
 
     final = os.path.join(dir_expr, file_expr)
     node.parm("filename").set(final)
 
     # set pre and post wedge file string for houdini wedge reading
     WEDGE_EXPR = '`chs("wedge_index")`'
-    
+
     full_path = os.path.join(dir_expr, file_expr)  # same as “final”
-    idx       = full_path.find(WEDGE_EXPR)
-    
-    pre_wedge  = full_path[:idx]                   # dir_expr + base + first dot
-    post_wedge = full_path[idx + len(WEDGE_EXPR):] # ".$F4.bgeo.sc"
-    
+    idx = full_path.find(WEDGE_EXPR)
+
+    pre_wedge = full_path[:idx]  # dir_expr + base + first dot
+    post_wedge = full_path[idx + len(WEDGE_EXPR) :]  # ".$F4.bgeo.sc"
+
     node.parm("filename_pre_wedge").set(pre_wedge)
     node.parm("filename_post_wedge").set(post_wedge)
 
@@ -162,15 +187,16 @@ def populate_cache(kwargs: dict) -> None:
     cache_versions_update(cache_name, versions)
     store_selected(node)
 
+
 def version_menu():
     node = hou.pwd()
     versions_string = node.parm("spare_versions").eval().strip()
     versions = ast.literal_eval(versions_string) if versions_string else []
-    #cache_name = node.evalParm("name").strip()
-    
-    #cache = getattr(hou.session, "oom_cache_versions", {})
-    #versions =  cache.get(cache_name, [])          # empty list if not cached
-    
+    # cache_name = node.evalParm("name").strip()
+
+    # cache = getattr(hou.session, "oom_cache_versions", {})
+    # versions =  cache.get(cache_name, [])          # empty list if not cached
+
     """
     Ordered menu callback.
     Returns a flat tuple: (token, label, token, label, …)
@@ -181,12 +207,12 @@ def version_menu():
     # versions = _get_versions()          # e.g. [1, 2, 3]  or  []
     # reverse the list
     versions = versions[::-1]
-    if not versions:                    # no publishes yet
-        return ("000", "0")             # token '000' (path), label '0' (UI)
+    if not versions:  # no publishes yet
+        return ("000", "0")  # token '000' (path), label '0' (UI)
 
-    #TOKENS = '001','002',…   LABELS = '1','2',…
-    tokens  = [v for v in versions]   # zero padded
-    labels  = [str(v)      for v in versions]  # plain ints
+    # TOKENS = '001','002',…   LABELS = '1','2',…
+    tokens = [v for v in versions]  # zero padded
+    labels = [str(v) for v in versions]  # plain ints
 
     # flatten to token,label,token,label,…
     flat = tuple(x for pair in zip(tokens, labels) for x in pair)
@@ -194,13 +220,15 @@ def version_menu():
     # store as selected
     return flat
 
+
 # Submit headless farm job
 def submit_job(node):
-    from oom_houdini.submit_pdg_cook import submit_controller_job
     from oom_houdini.cook_top import pre_update_cache
+    from oom_houdini.submit_pdg_cook import submit_controller_job
+
     hip = hou.hipFile.path()
-    ok,msg = submit_controller_job(hip,node)
-    cache_node = node.rsplit("/cache_top/OUT",1)[0]
+    ok, msg = submit_controller_job(hip, node)
+    cache_node = node.rsplit("/cache_top/OUT", 1)[0]
     cache_node = hou.node(cache_node)
     pre_update_cache([cache_node])
     if ok:
