@@ -15,6 +15,7 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y xz-utils ca-certificates
       - run: sudo update-ca-certificates
       - run: ls -l /etc/ssl/certs/ca-certificates.crt
+      - run: curl -Iv https://registrationcenter-download.intel.com/ 2>&1 | sed -n '1,80p'
       - uses: actions/checkout@v5
       - uses: cachix/install-nix-action@v31
         with:
