@@ -22,6 +22,5 @@ jobs:
           GITHUB_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
-          . "$HOME/.nix-profile/etc/profile.d/nix.sh"
-          nix run .#publishHoudiniContainer
+          nix run .#publish-houdini-container
 
