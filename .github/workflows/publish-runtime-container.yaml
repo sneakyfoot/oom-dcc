@@ -2,7 +2,7 @@ name: publish-houdini-container
 
 on:
   push:
-    branches: ["main"]
+    branches: [ main ]
 
 permissions:
   contents: read
@@ -12,15 +12,28 @@ jobs:
   publish:
     runs-on: oom-dcc-arc
 
-    steps:
-      - uses: actions/checkout@v4
+    container:
+      image: ghcr.io/nixos/nix:latest
 
-      - name: Publish
+    steps:
+      - name: Checkout
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          nix shell nixpkgs#git --command bash -euo pipefail -c '
+            git clone "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" repo
+            cd repo
+            git checkout "${GITHUB_SHA}"
+          '
+
+      - name: Publish via flake
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
-          nix run .#publish-houdini-container
+          cd repo
+          nix shell nixpkgs#git --command nix run .#publish-houdini-container
 
