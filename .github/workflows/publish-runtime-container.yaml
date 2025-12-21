@@ -1,0 +1,36 @@
+name: publish-runtime-container
+
+on:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: oom-dcc-arc  # <-- your ARC INSTALLATION_NAME / runnerScaleSetName
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # If your runner image already has nix, delete this.
+      - name: Install Nix
+        run: |
+          set -euo pipefail
+          curl -L https://nixos.org/nix/install | sh -s -- --no-daemon
+          . "$HOME/.nix-profile/etc/profile.d/nix.sh"
+
+      - name: Publish (flake)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_ACTOR: ${{ github.actor }}
+        run: |
+          set -euo pipefail
+          . "$HOME/.nix-profile/etc/profile.d/nix.sh"
+
+          # ensure podman exists (if it isn't preinstalled in the runner image)
+          nix shell nixpkgs#podman --command \
+            nix run .#publish-houdini-container
+
