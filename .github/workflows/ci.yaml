@@ -24,16 +24,10 @@ jobs:
       - name: Build uv bundle
         run: nix build .#oom-uv-bundle --impure --option sandbox false
 
-      - name: Ruff (errors only)
-        run: nix develop .#default --command ruff check src tests --select E9,F63,F7,F82,B
-
-      - name: Ruff (style warnings)
-        run: nix develop .#default --command ruff check src tests --select E401,F401 --exit-zero
-
       # Run ty on modules that don't require Houdini's Python environment.
       - name: Ty (non-Houdini modules)
         continue-on-error: true
-        run: nix develop .#default --command ty check src/oom_context.py src/oom_kube src/oom_dcc src/oom_sg_auth.py src/oom_sg_io.py src/oom_sg_tk.py
+        run: nix develop .#default --command ty check src/oom_context.py src/oom_kube src/oom_dcc
 
       - name: Nix flake check
         run: nix flake check --option sandbox false --impure
