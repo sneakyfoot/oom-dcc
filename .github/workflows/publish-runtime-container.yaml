@@ -12,22 +12,18 @@ jobs:
   publish:
     runs-on: oom-dcc-arc
     steps:
-      - run: sudo apt-get update && sudo apt-get install -y xz-utils ca-certificates
-      - run: sudo update-ca-certificates
+      - run: sudo apt-get update && sudo apt-get install -y xz-utils
       - uses: actions/checkout@v5
       - uses: cachix/install-nix-action@v31
         with:
+          nix_path: nixpkgs=channel:nixos-unstable
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
           extra_nix_config: |
-            ssl-cert-file = /etc/ssl/certs/ca-certificates.crt
             experimental-features = nix-command flakes
             accept-flake-config = true
       - name: Publish Houdini Container
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_ACTOR: ${{ github.actor }}
-          NIX_SSL_CERT_FILE: /etc/ssl/certs/ca-certificates.crt
-          SSL_CERT_FILE: /etc/ssl/certs/ca-certificates.crt
-          NIX_CURL_FLAGS: "--cacert /etc/ssl/certs/ca-certificates.crt"
         run: nix run .#publish-houdini-container
 

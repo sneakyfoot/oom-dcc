@@ -2,11 +2,11 @@
   "nodes": {
     "nixpkgs": {
       "locked": {
-        "lastModified": 1765186076,
-        "narHash": "sha256-hM20uyap1a0M9d344I692r+ik4gTMyj60cQWO+hAYP8=",
+        "lastModified": 1766070988,
+        "narHash": "sha256-G/WVghka6c4bAzMhTwT2vjLccg/awmHkdKSd2JrycLc=",
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "addf7cf5f383a3101ecfba091b98d0a1263dc9b8",
+        "rev": "c6245e83d836d0433170a16eb185cefe0572f8b8",
         "type": "github"
       },
       "original": {
@@ -25,11 +25,11 @@
     "tkcore": {
       "flake": false,
       "locked": {
-        "lastModified": 1764600467,
-        "narHash": "sha256-zPlVjVy/w8xT1yr8bzcxf4m3b3BNVOBwL84IShFuHJU=",
+        "lastModified": 1765960231,
+        "narHash": "sha256-gMA264hx7AOyjGUzkSlX2O7zFq5H6LAeGh68vMyUl2k=",
         "owner": "shotgunsoftware",
         "repo": "tk-core",
-        "rev": "3c223f689eaf079675511daa52dd21d7ef070725",
+        "rev": "62d128a8a3e06fe37cc9de5c6a699415c6b51c70",
         "type": "github"
       },
       "original": {
