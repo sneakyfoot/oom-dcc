@@ -25,14 +25,14 @@ def populate_lop(kwargs: dict) -> None:
     publish_name = name_parm.eval()
 
     # Build common template fields
-    fields = build_template_fields(template, publish_name=publish_name, include_frame=True)
+    fields = build_template_fields(
+        template, publish_name=publish_name, include_frame=True
+    )
 
     try:
         raw = template.apply_fields(fields)
     except Exception as e:
-        hou.ui.displayMessage(
-            "Failed to set path. Are you inside a blank scene?"
-        )
+        hou.ui.displayMessage("Failed to set path. Are you inside a blank scene?")
         print(e)
         return
 
@@ -41,9 +41,8 @@ def populate_lop(kwargs: dict) -> None:
     dirs[-1] = '`chs("version")`'
     dir_expr = os.sep.join(dirs)
 
-    base,rest = fname.split('.',1)
+    base, rest = fname.split(".", 1)
     file_expr = f"{base}.$F4.{rest.split('.')[1]}"
-
 
     final = os.path.join(dir_expr, file_expr)
     node.parm("filename").set(final)

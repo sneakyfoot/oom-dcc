@@ -8,8 +8,9 @@ focus on their path-expression specifics (eg: wedge, frame tokens, etc.).
 import hou
 
 
-def build_template_fields(template, publish_name: str | None = None, include_frame: bool = False) -> dict:
-
+def build_template_fields(
+    template, publish_name: str | None = None, include_frame: bool = False
+) -> dict:
     # Base fields from the current SG context
     context = hou.session.oom_context
     fields = context.as_template_fields(template)
@@ -30,4 +31,3 @@ def build_template_fields(template, publish_name: str | None = None, include_fra
         fields["frame"] = 1
 
     return fields
-

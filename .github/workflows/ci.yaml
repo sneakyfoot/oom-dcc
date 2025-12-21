@@ -20,14 +20,11 @@ jobs:
             accept-flake-config = true
             sandbox = false
 
-      # Build the uv-managed bundle (impure; needs network).
       - name: Build uv bundle
         run: nix build .#oom-uv-bundle --impure --option sandbox false
-
-      # Run ty on modules that don't require Houdini's Python environment.
+      - name: Ruff (errors only)
+        run: nix develop .#default --command ruff check src 
       - name: Ty (non-Houdini modules)
-        continue-on-error: true
         run: nix develop .#default --command ty check src/oom_context.py src/oom_kube src/oom_dcc
-
       - name: Nix flake check
         run: nix flake check --option sandbox false --impure

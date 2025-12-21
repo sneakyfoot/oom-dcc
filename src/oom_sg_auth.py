@@ -18,7 +18,9 @@ def oom_auth() -> ShotgunUser:
     if kube_credentials:
         script_name, api_key, host = kube_credentials
         # print("[oom] Authorizing with script user from kubernetes secret")
-        return auth.create_script_user(api_script=script_name, api_key=api_key, host=host)
+        return auth.create_script_user(
+            api_script=script_name, api_key=api_key, host=host
+        )
 
     env_credentials = _load_credentials_from_environment()
 
@@ -26,13 +28,16 @@ def oom_auth() -> ShotgunUser:
         script_name, api_key, host = env_credentials
         print("[oom] K8s auth failed")
         print("[oom] Authorizing with script user from environment variables")
-        return auth.create_script_user(api_script=script_name, api_key=api_key, host=host)
+        return auth.create_script_user(
+            api_script=script_name, api_key=api_key, host=host
+        )
 
-    raise RuntimeError("ShotGrid script credentials not found in kubernetes secret or environment")
+    raise RuntimeError(
+        "ShotGrid script credentials not found in kubernetes secret or environment"
+    )
 
 
 def _load_credentials_from_kubernetes() -> Optional[Credentials]:
-
     # Try to import the kubernetes client lazily so non-cluster hosts still work
     try:
         from kubernetes import client, config

@@ -42,8 +42,10 @@ def find_all_upstream_nodes(node_path):
         for input_node in node.inputs():
             if input_node is not None:
                 walk(input_node)
+
     walk(start_node)
     return result
+
 
 def pre_update_cache(upstream_nodes):
     for cache_node in upstream_nodes:
@@ -80,12 +82,11 @@ def pre_update_cache(upstream_nodes):
         new_version += 1
         versions.append(new_version)
         # set version parms to new version
-        oom_cache.store_versions(target_node,versions)
+        oom_cache.store_versions(target_node, versions)
         target_node.parm("selected_version").set(str(new_version))
         target_node.parm("version").set(0)
         # spare_versions = target_node.parm("spare_versions").eval()
         # print(spare_versions)
-
 
 
 def _cook_node(node_path: str, *, block: bool = True) -> None:
@@ -131,4 +132,4 @@ def agent_cook(node_path: str):
     try:
         cook_in_session(node_path)
     except Exception as e:
-            return f"Failed to cook: {e}"
+        return f"Failed to cook: {e}"

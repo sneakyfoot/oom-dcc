@@ -3,7 +3,6 @@ import socket
 import sys
 
 # ruff: noqa: I001
-import sgtk
 
 import oom_sg_auth
 from oom_bootstrap import bootstrap

@@ -1,7 +1,9 @@
+import os
+
+import hou
+
 import oom_houdini.oom_cache as _cache
 from oom_houdini.sg_template_utils import build_template_fields
-import hou
-import os
 
 # Alias reusable cache helpers; override refresh for USD specificity
 get_versions = _cache.get_versions
@@ -25,18 +27,18 @@ def populate_lop(kwargs: dict) -> None:
     publish_name = name_parm.eval()
 
     if publish_name == 0:
-        print('Localize')
-        publish_name = node.parm('name').eval()
+        print("Localize")
+        publish_name = node.parm("name").eval()
 
     # Build common template fields
-    fields = build_template_fields(template, publish_name=publish_name, include_frame=False)
+    fields = build_template_fields(
+        template, publish_name=publish_name, include_frame=False
+    )
 
     try:
         raw = template.apply_fields(fields)
     except Exception as e:
-        hou.ui.displayMessage(
-            "Failed to set path. Are you inside a blank scene?"
-        )
+        hou.ui.displayMessage("Failed to set path. Are you inside a blank scene?")
         print(e)
         return
 
@@ -47,8 +49,7 @@ def populate_lop(kwargs: dict) -> None:
 
     final = os.path.join(dir_expr, fname)
     node.parm("filename").set(final)
-    save_path = final.replace('`chs("version")`','`chs("version_next")`')
-    frame_path = final.replace(".usd",".$F4.usd")
+    frame_path = final.replace(".usd", ".$F4.usd")
     # node.parm("filename_single").set(save_path)
     node.parm("filename_frames").set(frame_path)
 
