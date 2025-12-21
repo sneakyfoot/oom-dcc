@@ -78,6 +78,16 @@ let
   # Farm container #
   ##################
 
+  skopeoPolicy = pkgs.writeText "containers-policy.json" ''
+    {
+      "default": [{ "type": "reject" }],
+      "transports": {
+        "docker-archive": { "": [{ "type": "insecureAcceptAnything" }] },
+        "docker": { "ghcr.io/sneakyfoot/dcc-runtime": [{ "type": "insecureAcceptAnything" }] }
+      }
+    }
+  '';
+
   publishHoudiniContainer =
     pkgs.writeShellScriptBin "publish-houdini-container" ''
       set -euo pipefail
@@ -95,13 +105,13 @@ let
       skopeo="${pkgs.skopeo}/bin/skopeo"
   
       # Push immutable tag from the nix-built docker archive tarball
-      "$skopeo" copy --all \
+      "$skopeo" copy --all --policy "${skopeoPolicy}" \
         "docker-archive:$image_tarball" \
         "docker://$registry_repo:${shaTag}" \
         --dest-creds "$creds"
   
       # Tag latest by copying within the registry (usually no layer re-upload)
-      "$skopeo" copy --all \
+      "$skopeo" copy --all --policy "${skopeoPolicy}" \
         "docker://$registry_repo:${shaTag}" \
         "docker://$registry_repo:latest" \
         --src-creds "$creds" \
