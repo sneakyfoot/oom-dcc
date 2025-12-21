@@ -23,8 +23,8 @@ jobs:
       - name: Build uv bundle
         run: nix build .#oom-uv-bundle --impure --option sandbox false
       - name: Ruff (errors only)
-        run: nix develop .#default --command ruff check src 
+        run: nix develop .#default --command uv run ruff check src 
       - name: Ty (non-Houdini modules)
-        run: nix develop .#default --command ty check src/oom_context.py src/oom_kube src/oom_dcc
+        run: nix develop .#default --command uv run ty check src/oom_context.py src/oom_kube src/oom_dcc
       - name: Nix flake check
         run: nix flake check --option sandbox false --impure
