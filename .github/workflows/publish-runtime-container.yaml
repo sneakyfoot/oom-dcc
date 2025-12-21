@@ -23,12 +23,12 @@ jobs:
             ssl-cert-file = /etc/ssl/certs/ca-certificates.crt
             experimental-features = nix-command flakes
             accept-flake-config = true
+      - run: . /home/runner/.nix-profile/etc/profile.d/nix.sh
       - name: Publish Houdini Container
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_ACTOR: ${{ github.actor }}
           NIX_SSL_CERT_FILE: /etc/ssl/certs/ca-certificates.crt
           SSL_CERT_FILE: /etc/ssl/certs/ca-certificates.crt
-        run: . /home/runner/.nix-profile/etc/profile.d/nix.sh
         run: nix run .#publish-houdini-container
 
