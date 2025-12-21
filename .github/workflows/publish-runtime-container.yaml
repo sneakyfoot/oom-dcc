@@ -14,8 +14,6 @@ jobs:
     steps:
       - run: sudo apt-get update && sudo apt-get install -y xz-utils ca-certificates
       - run: sudo update-ca-certificates
-      - run: ls -l /etc/ssl/certs/ca-certificates.crt
-      - run: curl -Iv https://registrationcenter-download.intel.com/ 2>&1 | sed -n '1,80p'
       - uses: actions/checkout@v5
       - uses: cachix/install-nix-action@v31
         with:
@@ -24,12 +22,12 @@ jobs:
             ssl-cert-file = /etc/ssl/certs/ca-certificates.crt
             experimental-features = nix-command flakes
             accept-flake-config = true
-      - run: . /home/runner/.nix-profile/etc/profile.d/nix.sh
       - name: Publish Houdini Container
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_ACTOR: ${{ github.actor }}
           NIX_SSL_CERT_FILE: /etc/ssl/certs/ca-certificates.crt
           SSL_CERT_FILE: /etc/ssl/certs/ca-certificates.crt
+          NIX_CURL_FLAGS: "--cacert /etc/ssl/certs/ca-certificates.crt"
         run: nix run .#publish-houdini-container
 
