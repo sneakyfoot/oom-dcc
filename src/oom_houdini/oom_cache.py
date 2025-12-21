@@ -215,7 +215,7 @@ def version_menu():
     labels = [str(v) for v in versions]  # plain ints
 
     # flatten to token,label,token,label,…
-    flat = tuple(x for pair in zip(tokens, labels) for x in pair)
+    flat = tuple(x for pair in zip(tokens, labels, strict=True) for x in pair)
 
     # store as selected
     return flat
