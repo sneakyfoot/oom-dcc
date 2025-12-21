@@ -2,7 +2,7 @@
 
 let
   toolchain =
-    [ pkgs.uv pkgs.cacert pkgs.makeWrapper pkgs.zlib pkgs.openssl pkgs.stdenv.cc ];
+    [ pkgs.uv pkgs.ruff pkgs.ty pkgs.cacert pkgs.makeWrapper pkgs.zlib pkgs.openssl pkgs.stdenv.cc ];
 
   uvBundle =
     pkgs.stdenvNoCC.mkDerivation {
@@ -31,7 +31,8 @@ let
 
         uv python install ${pythonSpec}
         uv venv --python ${pythonSpec}
-        uv sync --project ${src} --frozen --no-dev --no-editable
+        # Keep the local project editable so entrypoints resolve modules.
+        uv sync --project ${src} --frozen --no-dev
 
         mkdir -p "$out/bin"
         find "$UV_PROJECT_ENVIRONMENT/bin" -maxdepth 1 -type f -executable -exec ln -sf {} "$out/bin/" \;

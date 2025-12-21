@@ -4,16 +4,15 @@
 , houdiniHostRoot ? "/mnt/RAID/Assets/DCCs/houdini/latest"
 , nukeHostRoot ? "/mnt/RAID/Assets/DCCs/nuke/latest"
 , houdiniContainerRoot ? "/opt/houdini"
-, uvProjectEnv
-, python
-, uv
+, uvBundle
 , src
-, tkCorePath
 , shaTag
 }:
 
 let
-  uvPython = "${python}/bin/python";
+  uvPython = "${uvBundle}/python/bin/python";
+  uvProjectEnv = "${uvBundle}/venv";
+  uvSitePkgs = "${uvProjectEnv}/lib/python3.11/site-packages";
 
   houdiniDeps = runtimePkgs pkgs;
 
@@ -31,6 +30,7 @@ let
     export PDG_PYTHON="$HFS/python/bin/python"
     export HOUDINI_PACKAGE_DIR=${packageDir}
     export OOM_TAG=${shaTag}
+    export PYTHONPATH=${uvProjectEnv}/lib/python3.11/site-packages:$PYTHONPATH
   '';
 
   houdiniHostProfile = mkHoudiniProfile {
@@ -97,7 +97,7 @@ let
       repo_root="$(git rev-parse --show-toplevel 2>/dev/null || printf '%s\n' "$PWD")"
       flake_ref="''${FLAKE_REF:-$repo_root}"
   
-      image_tarball="$(nix build "''${flake_ref}#houdini-container" --impure --option sandbox false --no-link --print-out-paths)"
+      image_tarball="$(nix build "''${flake_ref}#houdini-container" --option sandbox relaxed --no-link --print-out-paths)"
   
       registry_repo="ghcr.io/sneakyfoot/dcc-runtime"
       creds="''${GITHUB_ACTOR:-sneakyfoot}:''${GITHUB_TOKEN}"
@@ -153,30 +153,13 @@ let
 
   fhsLdLayer = mkFhsLdLayer { };
 
-  prebuiltUvEnv = pkgs.runCommand "oom-uv-env" {
-    buildInputs = [ uv python pkgs.cacert ];
-    SSL_CERT_FILE = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
-    NIX_SSL_CERT_FILE = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
-  } ''
-    set -euo pipefail
-
-    export UV_PYTHON=${uvPython}
-    export UV_NO_MANAGED_PYTHON=1
-    export UV_NO_PYTHON_DOWNLOADS=1
-    export UV_PROJECT_ENVIRONMENT=$out${uvProjectEnv}
-    export UV_CACHE_DIR=$out/var/uv/cache
-
-    mkdir -p "$UV_PROJECT_ENVIRONMENT" "$UV_CACHE_DIR"
-    ${uv}/bin/uv sync --project ${src} --frozen --no-dev
-  '';
-
   houdiniContainerImage =
     pkgs.dockerTools.buildImage {
       name = "houdini-runtime";
       tag = "${shaTag}";
       copyToRoot = pkgs.buildEnv {
         name = "image-root";
-        paths = [ pkgs.bash fhsLdLayer pkgs.git pkgs.openssh pkgs.cacert prebuiltUvEnv ] ++ houdiniDeps;
+        paths = [ pkgs.bash fhsLdLayer pkgs.git pkgs.openssh pkgs.cacert uvBundle ] ++ houdiniDeps;
         pathsToLink = [ "/bin" "/usr/bin" "/usr/lib" "/usr/lib64" "/lib" "/lib64" "/etc" "/var" "/nix/store" ];
       };
       runAsRoot = ''
@@ -204,10 +187,8 @@ let
           "OOM_CORE=${src}"
           "OOM=${src}"
           "OOM_TAG=${shaTag}"
-          "SGTK_PATH=${tkCorePath}"
+          "SGTK_PATH=${uvSitePkgs}"
           "UV_PYTHON=${uvPython}"
-          "UV_NO_MANAGED_PYTHON=1"
-          "UV_NO_PYTHON_DOWNLOADS=1"
           "UV_PROJECT_ENVIRONMENT=${uvProjectEnv}"
           "UV_CACHE_DIR=/var/uv/cache"
           "HFS=${houdiniHostRoot}"

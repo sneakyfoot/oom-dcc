@@ -1,5 +1,4 @@
 import sys, os
-import oom_sg_tk
 import sgtk
 from oom_sg_auth import oom_auth
 from sgtk.bootstrap import ToolkitManager

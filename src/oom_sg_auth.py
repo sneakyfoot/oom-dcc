@@ -3,7 +3,6 @@ import base64
 import os
 from typing import Mapping, Optional, Tuple, cast
 
-import oom_sg_tk
 from sgtk.authentication import ShotgunAuthenticator, ShotgunUser
 
 
