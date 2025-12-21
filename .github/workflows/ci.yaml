@@ -1,0 +1,34 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint-and-check:
+    runs-on: oom-dcc-arc
+    steps:
+      - uses: actions/checkout@v5
+      - uses: cachix/install-nix-action@v31
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
+            sandbox = false
+
+      # Build the uv-managed bundle (impure; needs network).
+      - name: Build uv bundle
+        run: nix build .#oom-uv-bundle --impure --option sandbox false
+
+      - name: Ruff
+        run: nix develop .#default --command ruff check src tests
+
+      # Run ty on modules that don't require Houdini's Python environment.
+      - name: Ty (non-Houdini modules)
+        continue-on-error: true
+        run: nix develop .#default --command ty check src/oom_context.py src/oom_kube src/oom_dcc src/oom_sg_auth.py src/oom_sg_io.py src/oom_sg_tk.py
+
+      - name: Nix flake check
+        run: nix flake check --option sandbox false --impure
