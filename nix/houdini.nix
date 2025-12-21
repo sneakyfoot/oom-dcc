@@ -78,34 +78,34 @@ let
   # Farm container #
   ##################
 
-  publishHoudiniContainer = 
+  publishHoudiniContainer =
     pkgs.writeShellScriptBin "publish-houdini-container" ''
       set -euo pipefail
-
+  
       : "''${GITHUB_TOKEN:?GITHUB_TOKEN must be set to push to ghcr.io}"
-
+  
       repo_root="$(git rev-parse --show-toplevel 2>/dev/null || printf '%s\n' "$PWD")"
       flake_ref="''${FLAKE_REF:-$repo_root}"
-
+  
       image_tarball="$(nix build "''${flake_ref}#houdini-container" --impure --option sandbox false --no-link --print-out-paths)"
-      load_output="$(podman load --input "$image_tarball")"
-      image_ref="$(printf '%s\n' "$load_output" | sed -nE 's/^Loaded image(s)?: //p' | tail -n 1)"
-
-      if [ -z "$image_ref" ]; then
-        echo "Unable to determine image reference from podman load output:" >&2
-        printf '%s\n' "$load_output" >&2
-        exit 1
-      fi
-
+  
       registry_repo="ghcr.io/sneakyfoot/dcc-runtime"
-
-      printf '%s\n' "$GITHUB_TOKEN" | podman login ghcr.io -u sneakyfoot --password-stdin
-
-      podman tag "$image_ref" "''${registry_repo}:${shaTag}"
-      podman tag "$image_ref" "''${registry_repo}:latest"
-
-      podman push "''${registry_repo}:${shaTag}"
-      podman push "''${registry_repo}:latest"
+      creds="''${GITHUB_ACTOR:-sneakyfoot}:''${GITHUB_TOKEN}"
+  
+      skopeo="${pkgs.skopeo}/bin/skopeo"
+  
+      # Push immutable tag from the nix-built docker archive tarball
+      "$skopeo" copy --all \
+        "docker-archive:$image_tarball" \
+        "docker://$registry_repo:${shaTag}" \
+        --dest-creds "$creds"
+  
+      # Tag latest by copying within the registry (usually no layer re-upload)
+      "$skopeo" copy --all \
+        "docker://$registry_repo:${shaTag}" \
+        "docker://$registry_repo:latest" \
+        --src-creds "$creds" \
+        --dest-creds "$creds"
     '';
 
   ldSoConf = ''
