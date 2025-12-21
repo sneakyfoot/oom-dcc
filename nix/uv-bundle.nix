@@ -2,7 +2,7 @@
 
 let
   toolchain =
-    [ pkgs.uv pkgs.ruff pkgs.ty pkgs.cacert pkgs.makeWrapper pkgs.zlib pkgs.openssl pkgs.stdenv.cc ];
+    [ pkgs.git pkgs.uv pkgs.ruff pkgs.ty pkgs.cacert pkgs.makeWrapper pkgs.zlib pkgs.openssl pkgs.stdenv.cc ];
 
   uvBundle =
     pkgs.stdenvNoCC.mkDerivation {
