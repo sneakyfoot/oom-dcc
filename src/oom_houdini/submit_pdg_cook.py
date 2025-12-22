@@ -130,6 +130,7 @@ def build_service_job_manifest(
         "uid": uid,
         "gid": gid,
         "command": command,
+        "username": username,
         #        "pdg_dir": pdg_dir,
         #        "pdg_scripts": pdg_scripts,
         #        "pdg_item_name": pdg_item_name or "",
