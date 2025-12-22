@@ -1,19 +1,19 @@
-import os, sys
+import os
+import sys
 from pathlib import Path
-import oom_sg_tk
-import sgtk
-from oom_bootstrap import bootstrap
-import hou
 from pprint import pformat
+
+import hou
+import sgtk
+
+from oom_bootstrap import bootstrap
 
 print("[oom] Running Houdini load script")
 PROJECT_ROOT = "/mnt/RAID/Projects"
 LOCAL_STORAGE_CODE = "RAID"
 
 
-
-
-def context_from_path(path,tk,engine, sg=None):
+def context_from_path(path, tk, engine, sg=None):
     if sg is None:
         sg = tk.shotgun
 
@@ -27,7 +27,7 @@ def context_from_path(path,tk,engine, sg=None):
     sgtk.platform.engine.set_current_engine(None)
     # sgtk.platform.current_engine().destroy()
     # sgtk.platform.engine.set_current_engine(None)
-    engine,tk,sg = bootstrap(project)
+    engine, tk, sg = bootstrap(project)
     tk.synchronize_filesystem_structure()
     print(path)
     context = tk.context_from_path(path)
@@ -68,10 +68,11 @@ def context_from_path(path,tk,engine, sg=None):
     print(context)
     return engine, tk, sg, context
 
+
 try:
     # ── 0. Re‑use handles if 123.py already bootstrapped ───────────────
-    tk      = getattr(hou.session, "oom_tk",      None)
-    engine  = getattr(hou.session, "oom_engine",  None)
+    tk = getattr(hou.session, "oom_tk", None)
+    engine = getattr(hou.session, "oom_engine", None)
     context = getattr(hou.session, "oom_context", None)
     test = 0
     # ── 1. Bootstrap tk‑shell if nothing exists yet ───────────────
@@ -84,15 +85,14 @@ try:
     # ── 2. Update context whenever a hip is (re)loaded ─────────────────
     hip_path = hou.hipFile.path()
     if hip_path and os.path.exists(hip_path):
-
-        # bootstrap if no engine 
+        # bootstrap if no engine
         if engine is None:
             print("[oom] Missing Toolkit session – bootstrapping tk‑shell")
             # bootstrap
-            engine,tk,sg = bootstrap()
+            engine, tk, sg = bootstrap()
 
         # start up new engine in current context
-        engine,tk,sg,context = context_from_path(hip_path,tk,engine)
+        engine, tk, sg, context = context_from_path(hip_path, tk, engine)
         hou.session.oom_context = context
         hou.session.oom_tk = tk
         hou.session.oom_engine = engine
@@ -124,13 +124,18 @@ try:
         )
 
         # Pull cut‑range if present
-        sg      = tk.shotgun
+        sg = tk.shotgun
         shot_id = context.entity.get("id") if context.entity else None
         if shot_id:
-            shot = sg.find_one("Shot", [["id", "is", shot_id]],
-                               ["sg_cut_in", "sg_cut_out"])
-            if shot and shot["sg_cut_in"] is not None and shot["sg_cut_out"] is not None:
-                os.environ["CUT_IN"]  = str(shot["sg_cut_in"])
+            shot = sg.find_one(
+                "Shot", [["id", "is", shot_id]], ["sg_cut_in", "sg_cut_out"]
+            )
+            if (
+                shot
+                and shot["sg_cut_in"] is not None
+                and shot["sg_cut_out"] is not None
+            ):
+                os.environ["CUT_IN"] = str(shot["sg_cut_in"])
                 os.environ["CUT_OUT"] = str(shot["sg_cut_out"])
 
         print(f"[oom] Context updated from hip:\n  {hip_path}")
@@ -140,4 +145,3 @@ try:
 
 except Exception as e:
     print(f"[oom] Failed in 456.py: {e}")
-
