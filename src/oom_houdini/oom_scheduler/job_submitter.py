@@ -1,7 +1,7 @@
 import os
 import shlex
 import textwrap
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, TypedDict, cast
 
 
 DEFAULT_HFS = "/opt/houdini"
@@ -32,6 +32,13 @@ def _log_exception(context: str, exc: Exception) -> None:
     return None
 
 
+class _ActiveJobInfo(TypedDict):
+    namespace: str
+    job_name: str
+    work_item_id: int
+    work_item_name: str
+
+
 class JobSubmitter:
     def __init__(self, owner):
         # owner is the scheduler instance
@@ -41,7 +48,7 @@ class JobSubmitter:
         self._hfs = os.environ.get("HFS", DEFAULT_HFS)
         self._python_bin = os.environ.get("PDG_PYTHON", DEFAULT_PYTHON)
         self._hython_bin = os.environ.get("PDG_HYTHON", DEFAULT_HYTHON)
-        self._active_jobs: Dict[Tuple[str, str], Dict[str, object]] = {}
+        self._active_jobs: Dict[Tuple[str, str], _ActiveJobInfo] = {}
         self._batch_api = None
         self._core_api = None
         self._kube_client_mod = None
@@ -109,8 +116,8 @@ class JobSubmitter:
             ram_gb = 0
 
         # Preserve previous defaults when parms are unset
-        cpu_arg = int(cpu_cores) if int(cpu_cores) > 0 else 10
-        mem_arg = int(ram_gb) if int(ram_gb) > 0 else 32
+        cpu_arg = str(int(cpu_cores)) if int(cpu_cores) > 0 else "10"
+        mem_arg = str(int(ram_gb)) if int(ram_gb) > 0 else "32"
 
         manifest = build_job_manifest(
             None,
@@ -138,17 +145,20 @@ class JobSubmitter:
             raise RuntimeError("Failed to initialize Kubernetes client")
         job_resource = create_job(batch_api, manifest)
 
-        submitted_name = (
+        submitted_name = str(
             getattr(getattr(job_resource, "metadata", None), "name", None)
             or manifest.get("metadata", {}).get("name")
             or job_name
         )
-        self._active_jobs[(namespace, submitted_name)] = {
-            "namespace": namespace,
-            "job_name": submitted_name,
-            "work_item_id": int(getattr(work_item, "id", 0) or 0),
-            "work_item_name": wi_name,
-        }
+        self._active_jobs[(namespace, submitted_name)] = cast(
+            _ActiveJobInfo,
+            {
+                "namespace": namespace,
+                "job_name": submitted_name,
+                "work_item_id": int(getattr(work_item, "id", 0) or 0),
+                "work_item_name": wi_name,
+            },
+        )
 
         return pdg.scheduleResult.Succeeded
 

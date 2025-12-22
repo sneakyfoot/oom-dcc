@@ -1,12 +1,15 @@
-import os,socket
-import oom_sg_tk,oom_sg_auth
-from oom_bootstrap import bootstrap
+import os
+import socket
+
 import sgtk
+
+import oom_sg_auth
+from oom_bootstrap import bootstrap
 
 # 3de Tags #
 # 3DE4.script.startup: true
 
-print('[oom] Running Startup Script')
+print("[oom] Running Startup Script")
 
 # set shotgun home env var for shared /home
 hostname = socket.gethostname()
@@ -28,7 +31,7 @@ else:
     user = oom_sg_auth.oom_auth()
     sg = user.create_sg_connection()
     project = sg.find_one("Project", [["id", "is", project_id]], ["id"])
-    engine,tk,sg = bootstrap(project)
+    engine, tk, sg = bootstrap(project)
 
     # set context from shot
     context = tk.context_from_entity("Shot", shot_id)

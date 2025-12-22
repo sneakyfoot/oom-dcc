@@ -20,4 +20,4 @@ dependencies = [
 oom = "oom_context:main"
 
 [tool.ty.environment]
-extra-paths = ["typings"]
+extra-paths = ["./stubs"]

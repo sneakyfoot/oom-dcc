@@ -4,6 +4,7 @@ import sgtk
 import re
 import os
 
+
 class VersionUpDialog(QtWidgets.QDialog):
     def __init__(self, parent=None):
         super(VersionUpDialog, self).__init__(parent)
@@ -44,7 +45,9 @@ class VersionUpDialog(QtWidgets.QDialog):
             fields = template.get_fields(current_path)
 
             # auto-increment version
-            all_versions = self.tk.paths_from_template(template, fields, skip_keys=["version"])
+            all_versions = self.tk.paths_from_template(
+                template, fields, skip_keys=["version"]
+            )
             version_numbers = []
             for p in all_versions:
                 try:
@@ -74,7 +77,9 @@ class VersionUpDialog(QtWidgets.QDialog):
 
             # publish
             try:
-                pft = self.sg.find_one("PublishedFileType", [["code", "is", "Houdini Scene"]])
+                pft = self.sg.find_one(
+                    "PublishedFileType", [["code", "is", "Houdini Scene"]]
+                )
                 if not pft:
                     raise RuntimeError("Missing PublishedFileType: Houdini Scene")
 
@@ -90,18 +95,25 @@ class VersionUpDialog(QtWidgets.QDialog):
                     "name": name,
                     "code": name,
                     "version_number": new_version,
-                    "published_file_type": pft
+                    "published_file_type": pft,
                 }
 
                 published_file = self.sg.create("PublishedFile", publish_data)
                 print(f"[oom] Published versioned file to ShotGrid: {published_file}")
-                QtWidgets.QMessageBox.information(self, "Success", f"Versioned up and published:\n{new_path}")
+                QtWidgets.QMessageBox.information(
+                    self, "Success", f"Versioned up and published:\n{new_path}"
+                )
                 self.close()
             except Exception as e:
-                QtWidgets.QMessageBox.warning(self, "Publish Warning", f"Saved HIP file but failed to publish:\n{e}")
+                QtWidgets.QMessageBox.warning(
+                    self,
+                    "Publish Warning",
+                    f"Saved HIP file but failed to publish:\n{e}",
+                )
 
         except Exception as e:
             QtWidgets.QMessageBox.critical(self, "Error", f"Failed to version up:\n{e}")
+
 
 def launch():
     hip_path = hou.hipFile.path()
@@ -116,5 +128,6 @@ def launch():
     dlg = VersionUpDialog()
     dlg.setParent(hou.ui.mainQtWindow(), QtCore.Qt.Window)
     dlg.show()
+
 
 launch()

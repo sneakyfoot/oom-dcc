@@ -5,6 +5,7 @@ import sgtk
 import re
 import os
 
+
 class SaveDialog(QtWidgets.QDialog):
     def __init__(self, parent=None):
         super(SaveDialog, self).__init__(parent)
@@ -59,9 +60,7 @@ class SaveDialog(QtWidgets.QDialog):
 
         # Show all Steps configured for this entity type in SG
         self.pipeline_steps = self.sg.find(
-            "Step",
-            [["entity_type", "is", self.entity["type"]]],
-            ["code", "name"]
+            "Step", [["entity_type", "is", self.entity["type"]]], ["code", "name"]
         )
         for step in self.pipeline_steps:
             # Ensure the UI label always displays the step code
@@ -78,7 +77,7 @@ class SaveDialog(QtWidgets.QDialog):
         filters = [
             ["project", "is", self.project],
             ["entity", "is", self.entity],
-            ["step", "is", step]
+            ["step", "is", step],
         ]
         self.tasks = self.sg.find("Task", filters, ["content", "name"])
 
@@ -109,14 +108,17 @@ class SaveDialog(QtWidgets.QDialog):
         """Enable Save only when name, step, and task are all valid."""
         name_ok = bool(re.match(r"^[a-zA-Z0-9_]+$", self.name_field.text().strip()))
         step_ok = self.step_field.currentData() is not None
-        task_ok = self.task_field.isEnabled() and self.task_field.currentData() is not None
+        task_ok = (
+            self.task_field.isEnabled() and self.task_field.currentData() is not None
+        )
         self.save_btn.setEnabled(name_ok and step_ok and task_ok)
-
 
     def save_hip_file(self):
         name = self.name_field.text().strip()
         if not re.match(r"^[a-zA-Z0-9_]+$", name):
-            QtWidgets.QMessageBox.critical(self, "Invalid Name", "Name must be alphanumeric with underscores only.")
+            QtWidgets.QMessageBox.critical(
+                self, "Invalid Name", "Name must be alphanumeric with underscores only."
+            )
             return
 
         selected_step = self.step_field.currentData()
@@ -131,10 +133,14 @@ class SaveDialog(QtWidgets.QDialog):
             selected_task["name"] = selected_task.get("content")
 
         if not selected_step:
-            QtWidgets.QMessageBox.critical(self, "Missing Step", "You must select a pipeline step.")
+            QtWidgets.QMessageBox.critical(
+                self, "Missing Step", "You must select a pipeline step."
+            )
             return
         if not selected_task:
-            QtWidgets.QMessageBox.critical(self, "Missing Task", "You must select a Task for this save.")
+            QtWidgets.QMessageBox.critical(
+                self, "Missing Task", "You must select a Task for this save."
+            )
             return
 
         # Create a context instance but do not set it yet. We only switch
@@ -144,7 +150,7 @@ class SaveDialog(QtWidgets.QDialog):
             project=self.project,
             entity=self.entity,
             step=selected_step,
-            task=selected_task
+            task=selected_task,
         )
 
         # Resolve path
@@ -176,7 +182,9 @@ class SaveDialog(QtWidgets.QDialog):
                 )
                 return
         except Exception as e:
-            QtWidgets.QMessageBox.critical(self, "Template Error", f"Failed to resolve path:\n{e}")
+            QtWidgets.QMessageBox.critical(
+                self, "Template Error", f"Failed to resolve path:\n{e}"
+            )
             return
 
         # At this point the file doesn't exist so we can safely switch context
@@ -196,20 +204,24 @@ class SaveDialog(QtWidgets.QDialog):
                 f"task: {hou.session.oom_context.task}"
             )
         except Exception as e:
-            QtWidgets.QMessageBox.critical(self, "Save Failed", f"Failed to save HIP file:\n{e}")
+            QtWidgets.QMessageBox.critical(
+                self, "Save Failed", f"Failed to save HIP file:\n{e}"
+            )
             return
 
         # Publish to ShotGrid
         try:
-            pft = self.sg.find_one("PublishedFileType", [["code", "is", "Houdini Scene"]])
+            pft = self.sg.find_one(
+                "PublishedFileType", [["code", "is", "Houdini Scene"]]
+            )
             if not pft:
                 raise RuntimeError("Missing PublishedFileType: Houdini Scene")
-            
+
             # sanitize entity
             entity = self.entity
             if "id" not in entity:
                 raise RuntimeError("Entity is missing ID")
-            
+
             # build base publish data (Task is required and set)
             publish_data = {
                 "project": self.project,
@@ -219,20 +231,25 @@ class SaveDialog(QtWidgets.QDialog):
                 "name": name,
                 "code": name,
                 "version_number": version,
-                "published_file_type": pft
+                "published_file_type": pft,
             }
 
             published_file = self.sg.create("PublishedFile", publish_data)
             print(f"[oom] Published to ShotGrid: {published_file}")
-            QtWidgets.QMessageBox.information(self, "Success", f"HIP saved & published:\n{path}")
+            QtWidgets.QMessageBox.information(
+                self, "Success", f"HIP saved & published:\n{path}"
+            )
             self.close()
         except Exception as e:
-            QtWidgets.QMessageBox.warning(self, "Publish Warning", f"Saved HIP file but failed to publish:\n{e}")
+            QtWidgets.QMessageBox.warning(
+                self, "Publish Warning", f"Saved HIP file but failed to publish:\n{e}"
+            )
 
 
 def launch():
     dlg = SaveDialog()
     dlg.setParent(hou.ui.mainQtWindow(), QtCore.Qt.Window)
     dlg.show()
+
 
 launch()

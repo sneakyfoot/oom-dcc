@@ -3,8 +3,8 @@ import nuke  # pyright: ignore
 
 # Add local plugin paths (absolute; avoid adding '.')
 ROOT_DIR = os.path.dirname(__file__)
-GIZMOS_DIR = os.path.join(ROOT_DIR, 'gizmos')
-PLUGINS_DIR = os.path.join(ROOT_DIR, 'plugins')
+GIZMOS_DIR = os.path.join(ROOT_DIR, "gizmos")
+PLUGINS_DIR = os.path.join(ROOT_DIR, "plugins")
 try:
     if os.path.isdir(GIZMOS_DIR):
         nuke.pluginAddPath(GIZMOS_DIR)
@@ -13,13 +13,14 @@ try:
     # Proactively register gizmos, including Nuke Indie extensions
     try:
         import glob
-        loaded_flag = '_oom_gizmos_loaded'
+
+        loaded_flag = "_oom_gizmos_loaded"
         if not getattr(nuke, loaded_flag, False):
             patterns = [
-                os.path.join(GIZMOS_DIR, '*.gizmo'),
-                os.path.join(GIZMOS_DIR, '*.giz'),
-                os.path.join(GIZMOS_DIR, '*.gzind'),  # Nuke Indie
-                os.path.join(GIZMOS_DIR, '*.gizind'), # Nuke Indie (alt)
+                os.path.join(GIZMOS_DIR, "*.gizmo"),
+                os.path.join(GIZMOS_DIR, "*.giz"),
+                os.path.join(GIZMOS_DIR, "*.gzind"),  # Nuke Indie
+                os.path.join(GIZMOS_DIR, "*.gizind"),  # Nuke Indie (alt)
             ]
             for pat in patterns:
                 for fp in glob.glob(pat):
@@ -34,12 +35,12 @@ except Exception:
     pass
 
 # Ensure our python package path is importable (oom package)
-PY_DIR = os.path.join(ROOT_DIR, 'python')
+PY_DIR = os.path.join(ROOT_DIR, "python")
 if PY_DIR not in sys.path:
     sys.path.insert(0, PY_DIR)
     print(f"[oom] Added to sys.path: {PY_DIR}")
 
-print('[oom] Nuke init starting')
+print("[oom] Nuke init starting")
 
 # Set ShotGrid home and certs (shared home layout)
 hostname = socket.gethostname()
@@ -52,29 +53,30 @@ PROJECT_ROOT = "/mnt/RAID2/SHOTGUN_TEST"
 LOCAL_STORAGE_CODE = "RAID2"
 
 # Session handles (stored on the nuke module)
-setattr(nuke, 'oom_engine', getattr(nuke, 'oom_engine', None))
-setattr(nuke, 'oom_tk', getattr(nuke, 'oom_tk', None))
-setattr(nuke, 'oom_context', getattr(nuke, 'oom_context', None))
+setattr(nuke, "oom_engine", getattr(nuke, "oom_engine", None))
+setattr(nuke, "oom_tk", getattr(nuke, "oom_tk", None))
+setattr(nuke, "oom_context", getattr(nuke, "oom_context", None))
 
 # Runtime flags
-IS_GUI = bool(getattr(nuke, 'env', {}).get('gui', ''))
-DISABLE = os.getenv('OOM_DISABLE_NUKE_INIT') == '1'
-ALLOW_HEADLESS = os.getenv('OOM_NUKE_BOOTSTRAP_HEADLESS') == '1'
+IS_GUI = bool(getattr(nuke, "env", {}).get("gui", ""))
+DISABLE = os.getenv("OOM_DISABLE_NUKE_INIT") == "1"
+ALLOW_HEADLESS = os.getenv("OOM_NUKE_BOOTSTRAP_HEADLESS") == "1"
 
 # Helpers
+
 
 def _set_cut_range_on_root(cut_in, cut_out):
     try:
         r = nuke.root()
-        r['first_frame'].setValue(int(cut_in))
-        r['last_frame'].setValue(int(cut_out))
+        r["first_frame"].setValue(int(cut_in))
+        r["last_frame"].setValue(int(cut_out))
         # lock range if knob exists to ensure UI/playback honors it
         try:
-            r['lock_range'].setValue(True)
+            r["lock_range"].setValue(True)
         except Exception:
             pass
-        os.environ['CUT_IN'] = str(int(cut_in))
-        os.environ['CUT_OUT'] = str(int(cut_out))
+        os.environ["CUT_IN"] = str(int(cut_in))
+        os.environ["CUT_OUT"] = str(int(cut_out))
         print(f"[oom] Set Nuke frame range to {cut_in}-{cut_out}")
     except Exception as e:
         print(f"[oom] Failed setting frame range: {e}")
@@ -162,7 +164,9 @@ def _context_from_path(path, tk, engine, sg=None):
                         context = tk.context_from_entity("Step", step.get("id"))
                     if task and context.task is None:
                         context = tk.context_from_entity("Task", task.get("id"))
-                    print(f"[oom] Restored context from SG – step: {context.step}, task: {context.task}")
+                    print(
+                        f"[oom] Restored context from SG – step: {context.step}, task: {context.task}"
+                    )
         except Exception as e:
             print(f"[oom] PublishedFile context restore failed: {e}")
 
@@ -209,19 +213,17 @@ def _bootstrap_from_env():
     return engine, tk, sg, context
 
 
-
-
 def _shot_id_from_context(context, sg):
     try:
         ent = context.entity if context else None
-        if ent and ent.get('type') == 'Shot':
-            return ent.get('id')
+        if ent and ent.get("type") == "Shot":
+            return ent.get("id")
         task = context.task if context else None
-        if task and task.get('id'):
-            t = sg.find_one('Task', [['id', 'is', task.get('id')]], ['entity'])
-            ent2 = t.get('entity') if t else None
-            if ent2 and ent2.get('type') == 'Shot':
-                return ent2.get('id')
+        if task and task.get("id"):
+            t = sg.find_one("Task", [["id", "is", task.get("id")]], ["entity"])
+            ent2 = t.get("entity") if t else None
+            if ent2 and ent2.get("type") == "Shot":
+                return ent2.get("id")
     except Exception:
         pass
     return None
@@ -230,8 +232,8 @@ def _shot_id_from_context(context, sg):
 def _on_script_load():
     try:
         script_path = nuke.root().name()
-        if not script_path or script_path in (None, 'Root', 'Untitled'):
-            print('[oom] Script load callback: no valid path')
+        if not script_path or script_path in (None, "Root", "Untitled"):
+            print("[oom] Script load callback: no valid path")
             return
 
         # Lazy imports for Toolkit
@@ -239,12 +241,12 @@ def _on_script_load():
         import sgtk
         from oom_bootstrap import bootstrap
 
-        engine = getattr(nuke, 'oom_engine', None)
-        tk = getattr(nuke, 'oom_tk', None)
+        engine = getattr(nuke, "oom_engine", None)
+        tk = getattr(nuke, "oom_tk", None)
 
         # If we have no TK yet, bootstrap a generic session
         if engine is None or tk is None:
-            print('[oom] No Toolkit session found — bootstrapping site session')
+            print("[oom] No Toolkit session found — bootstrapping site session")
             engine, tk, sg = bootstrap()
         else:
             sg = tk.shotgun
@@ -260,29 +262,43 @@ def _on_script_load():
         # Optional: set frame range from Shot entity if available
         shot_id = _shot_id_from_context(context, sg)
         if shot_id:
-            shot = sg.find_one('Shot', [['id', 'is', int(shot_id)]], ['sg_cut_in', 'sg_cut_out'])
-            if shot and shot.get('sg_cut_in') is not None and shot.get('sg_cut_out') is not None:
-                _set_cut_range_on_root(shot.get('sg_cut_in'), shot.get('sg_cut_out'))
+            shot = sg.find_one(
+                "Shot", [["id", "is", int(shot_id)]], ["sg_cut_in", "sg_cut_out"]
+            )
+            if (
+                shot
+                and shot.get("sg_cut_in") is not None
+                and shot.get("sg_cut_out") is not None
+            ):
+                _set_cut_range_on_root(shot.get("sg_cut_in"), shot.get("sg_cut_out"))
 
-        print(f"[oom] Updated Nuke context to step: {nuke.oom_context.step}, task: {nuke.oom_context.task}")
+        print(
+            f"[oom] Updated Nuke context to step: {nuke.oom_context.step}, task: {nuke.oom_context.task}"
+        )
     except Exception as e:
         print(f"[oom] onScriptLoad failed: {e}")
 
 
 def _sync_cut_range_from_current():
     try:
-        tk = getattr(nuke, 'oom_tk', None)
-        context = getattr(nuke, 'oom_context', None)
+        tk = getattr(nuke, "oom_tk", None)
+        context = getattr(nuke, "oom_context", None)
         if not tk or not context:
             return
         sg = tk.shotgun
         shot_id = _shot_id_from_context(context, sg)
         if not shot_id:
             return
-        shot = sg.find_one('Shot', [['id', 'is', int(shot_id)]], ['sg_cut_in', 'sg_cut_out'])
-        if shot and shot.get('sg_cut_in') is not None and shot.get('sg_cut_out') is not None:
-            _set_cut_range_on_root(shot.get('sg_cut_in'), shot.get('sg_cut_out'))
-            print('[oom] Sync Cut Range on new script')
+        shot = sg.find_one(
+            "Shot", [["id", "is", int(shot_id)]], ["sg_cut_in", "sg_cut_out"]
+        )
+        if (
+            shot
+            and shot.get("sg_cut_in") is not None
+            and shot.get("sg_cut_out") is not None
+        ):
+            _set_cut_range_on_root(shot.get("sg_cut_in"), shot.get("sg_cut_out"))
+            print("[oom] Sync Cut Range on new script")
     except Exception as e:
         print(f"[oom] Sync Cut Range failed: {e}")
 
@@ -290,12 +306,14 @@ def _sync_cut_range_from_current():
 # 1) Bootstrap from env if provided (matches Houdini 123.py)
 if not DISABLE:
     try:
-        if getattr(nuke, 'oom_engine', None) is None and (IS_GUI or ALLOW_HEADLESS):
+        if getattr(nuke, "oom_engine", None) is None and (IS_GUI or ALLOW_HEADLESS):
             engine, tk, sg, context = _bootstrap_from_env()
             if engine and tk:
                 nuke.oom_engine = engine
                 nuke.oom_tk = tk
-                nuke.oom_context = _restore_readable_names(context, tk) if context else context
+                nuke.oom_context = (
+                    _restore_readable_names(context, tk) if context else context
+                )
     except Exception as e:
         print(f"[oom] Env bootstrap failed: {e}")
 
@@ -303,13 +321,13 @@ if not DISABLE:
 # 2) Update context when scripts are opened (Houdini 456.py analogue)
 try:
     if not DISABLE and IS_GUI:
-        if hasattr(nuke, 'addOnScriptLoad'):
+        if hasattr(nuke, "addOnScriptLoad"):
             nuke.addOnScriptLoad(_on_script_load)
         # Some Nuke versions do not support addOnScriptNew; menu.py will handle first-session sync
-        if hasattr(nuke, 'addOnScriptNew'):
+        if hasattr(nuke, "addOnScriptNew"):
             nuke.addOnScriptNew(_sync_cut_range_from_current)
-        print('[oom] Registered script callbacks where available')
+        print("[oom] Registered script callbacks where available")
     else:
-        print('[oom] Skipping script callback registration (headless or disabled)')
+        print("[oom] Skipping script callback registration (headless or disabled)")
 except Exception as e:
     print(f"[oom] Failed registering script callbacks: {e}")

@@ -19,9 +19,9 @@ _SAVE_DIALOG_REF = None
 
 
 def _ensure_toolkit():
-    engine = getattr(nuke, 'oom_engine', None)
-    tk = getattr(nuke, 'oom_tk', None)
-    context = getattr(nuke, 'oom_context', None)
+    engine = getattr(nuke, "oom_engine", None)
+    tk = getattr(nuke, "oom_tk", None)
+    context = getattr(nuke, "oom_context", None)
 
     if engine and tk and context:
         return engine, tk, tk.shotgun, context
@@ -29,6 +29,7 @@ def _ensure_toolkit():
     try:
         import oom_sg_tk  # noqa: F401
         from oom_bootstrap import bootstrap
+
         engine, tk, sg = bootstrap()
         # Best-effort empty context until saved
         context = tk.context_empty()
@@ -89,11 +90,11 @@ class SaveDialog(QtWidgets.QDialog):
         self.step_field.addItem("-- Select Step --", None)
 
         entity_type = self.entity["type"] if self.entity else None
-        self.pipeline_steps = self.sg.find(
-            "Step",
-            [["entity_type", "is", entity_type]],
-            ["code", "name"]
-        ) if entity_type else []
+        self.pipeline_steps = (
+            self.sg.find("Step", [["entity_type", "is", entity_type]], ["code", "name"])
+            if entity_type
+            else []
+        )
         for step in self.pipeline_steps:
             self.step_field.addItem(step.get("code") or step.get("name"), step)
 
@@ -134,13 +135,17 @@ class SaveDialog(QtWidgets.QDialog):
     def update_save_enabled(self):
         name_ok = bool(re.match(r"^[a-zA-Z0-9_]+$", self.name_field.text().strip()))
         step_ok = self.step_field.currentData() is not None
-        task_ok = self.task_field.isEnabled() and self.task_field.currentData() is not None
+        task_ok = (
+            self.task_field.isEnabled() and self.task_field.currentData() is not None
+        )
         self.save_btn.setEnabled(name_ok and step_ok and task_ok)
 
     def save_script(self):
         name = self.name_field.text().strip()
         if not re.match(r"^[a-zA-Z0-9_]+$", name):
-            QtWidgets.QMessageBox.critical(self, "Invalid Name", "Name must be alphanumeric with underscores only.")
+            QtWidgets.QMessageBox.critical(
+                self, "Invalid Name", "Name must be alphanumeric with underscores only."
+            )
             return
 
         selected_step = self.step_field.currentData()
@@ -154,10 +159,14 @@ class SaveDialog(QtWidgets.QDialog):
             selected_task["name"] = selected_task.get("content")
 
         if not selected_step:
-            QtWidgets.QMessageBox.critical(self, "Missing Step", "You must select a pipeline step.")
+            QtWidgets.QMessageBox.critical(
+                self, "Missing Step", "You must select a pipeline step."
+            )
             return
         if not selected_task:
-            QtWidgets.QMessageBox.critical(self, "Missing Task", "You must select a Task for this save.")
+            QtWidgets.QMessageBox.critical(
+                self, "Missing Task", "You must select a Task for this save."
+            )
             return
 
         from sgtk.context import Context
@@ -184,7 +193,9 @@ class SaveDialog(QtWidgets.QDialog):
                 step_data = self.step_field.currentData()
                 fields["Step"] = step_data.get("code") or step_data.get("name")
 
-            existing = self.tk.paths_from_template(template, fields, skip_keys=["version"])
+            existing = self.tk.paths_from_template(
+                template, fields, skip_keys=["version"]
+            )
             if existing:
                 QtWidgets.QMessageBox.critical(
                     self,
@@ -205,7 +216,9 @@ class SaveDialog(QtWidgets.QDialog):
                 )
                 return
         except Exception as e:
-            QtWidgets.QMessageBox.critical(self, "Template Error", f"Failed to resolve path:\n{e}")
+            QtWidgets.QMessageBox.critical(
+                self, "Template Error", f"Failed to resolve path:\n{e}"
+            )
             return
 
         # Switch engine/context and save
@@ -221,7 +234,9 @@ class SaveDialog(QtWidgets.QDialog):
             # Publish to ShotGrid (match Version Up behavior)
             try:
                 # Resolve publish type
-                pft = self.sg.find_one("PublishedFileType", [["code", "is", "oom_nuke_file"]])
+                pft = self.sg.find_one(
+                    "PublishedFileType", [["code", "is", "oom_nuke_file"]]
+                )
                 if not pft:
                     raise RuntimeError("Missing PublishedFileType: oom_nuke_file")
 
@@ -247,14 +262,22 @@ class SaveDialog(QtWidgets.QDialog):
 
                 published_file = self.sg.create("PublishedFile", publish_data)
                 print(f"[oom] Published script to ShotGrid: {published_file}")
-                QtWidgets.QMessageBox.information(self, "Saved", f"Saved and published:\n{path}")
+                QtWidgets.QMessageBox.information(
+                    self, "Saved", f"Saved and published:\n{path}"
+                )
             except Exception as pub_err:
                 # Save succeeded; warn if publish failed
-                QtWidgets.QMessageBox.warning(self, "Publish Warning", f"Saved script, but publish failed:\n{pub_err}")
+                QtWidgets.QMessageBox.warning(
+                    self,
+                    "Publish Warning",
+                    f"Saved script, but publish failed:\n{pub_err}",
+                )
 
             self.close()
         except Exception as e:
-            QtWidgets.QMessageBox.critical(self, "Save Failed", f"Failed to save script:\n{e}")
+            QtWidgets.QMessageBox.critical(
+                self, "Save Failed", f"Failed to save script:\n{e}"
+            )
 
 
 def launch():
@@ -264,9 +287,10 @@ def launch():
         _SAVE_DIALOG_REF = dlg
         dlg.show()
         try:
-            dlg.raise_(); dlg.activateWindow()
+            dlg.raise_()
+            dlg.activateWindow()
         except Exception:
             pass
-        print('[oom] SaveDialog launched')
+        print("[oom] SaveDialog launched")
     except Exception as e:
         nuke.message(f"[oom] Failed to launch SaveDialog:\n{e}")

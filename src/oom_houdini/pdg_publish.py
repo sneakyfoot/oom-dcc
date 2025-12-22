@@ -11,7 +11,7 @@ Notes:
 """
 
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 
 import hou
 
@@ -79,7 +79,7 @@ def _create_publish(
         "version_number": version,
         "published_file_type": {"type": "PublishedFileType", "id": pf_type_id},
         "description": "",
-        "created_at": datetime.utcnow(),
+        "created_at": datetime.now(timezone.utc),
     }
 
     return sg.create("PublishedFile", data)

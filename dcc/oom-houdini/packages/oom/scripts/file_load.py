@@ -45,7 +45,7 @@ class VersionsDialog(QtWidgets.QDialog):
         self.publishes = publishes
         for pub in self.publishes:
             created = _format_date(pub.get("created_at"))
-            label = f'v{pub["version_number"]:03d}  ({created})'
+            label = f"v{pub['version_number']:03d}  ({created})"
             item = QtWidgets.QListWidgetItem(label)
             item.setData(QtCore.Qt.UserRole, pub["path"]["local_path"])
             self.version_list.addItem(item)
@@ -53,7 +53,9 @@ class VersionsDialog(QtWidgets.QDialog):
     def open_version(self):
         item = self.version_list.currentItem()
         if not item:
-            QtWidgets.QMessageBox.warning(self, "No Selection", "Please select a version to open.")
+            QtWidgets.QMessageBox.warning(
+                self, "No Selection", "Please select a version to open."
+            )
             return
 
         path = item.data(QtCore.Qt.UserRole)
@@ -64,7 +66,9 @@ class VersionsDialog(QtWidgets.QDialog):
                 self.main_dialog.close()
             self.accept()
         except Exception as e:
-            QtWidgets.QMessageBox.critical(self, "Open Failed", f"Failed to open HIP file:\n{e}")
+            QtWidgets.QMessageBox.critical(
+                self, "Open Failed", f"Failed to open HIP file:\n{e}"
+            )
 
 
 class OpenDialog(QtWidgets.QDialog):
@@ -112,9 +116,7 @@ class OpenDialog(QtWidgets.QDialog):
 
         # Show all Steps configured for this entity type in SG
         self.pipeline_steps = self.sg.find(
-            "Step",
-            [["entity_type", "is", self.entity["type"]]],
-            ["code", "name"]
+            "Step", [["entity_type", "is", self.entity["type"]]], ["code", "name"]
         )
         for step in self.pipeline_steps:
             self.step_field.addItem(step.get("code") or step.get("name"), step)
@@ -124,7 +126,7 @@ class OpenDialog(QtWidgets.QDialog):
         filters = [
             ["project", "is", self.project],
             ["entity", "is", self.entity],
-            ["published_file_type.PublishedFileType.code", "is", "Houdini Scene"]
+            ["published_file_type.PublishedFileType.code", "is", "Houdini Scene"],
         ]
         step = self.step_field.currentData() if hasattr(self, "step_field") else None
         if step:
@@ -132,8 +134,10 @@ class OpenDialog(QtWidgets.QDialog):
             filters.append(["task.Task.step", "is", step])
         fields = ["code", "version_number", "path", "created_at"]
         publishes = self.sg.find(
-            "PublishedFile", filters, fields,
-            order=[{"field_name": "version_number", "direction": "desc"}]
+            "PublishedFile",
+            filters,
+            fields,
+            order=[{"field_name": "version_number", "direction": "desc"}],
         )
 
         grouped = {}
@@ -145,7 +149,7 @@ class OpenDialog(QtWidgets.QDialog):
         for code, items in grouped.items():
             latest = items[0]
             created = _format_date(latest.get("created_at"))
-            label = f'{code}  v{latest["version_number"]:03d}  ({created})'
+            label = f"{code}  v{latest['version_number']:03d}  ({created})"
             item = QtWidgets.QListWidgetItem(label)
             item.setData(QtCore.Qt.UserRole, {"code": code, "publishes": items})
             self.publish_list.addItem(item)
@@ -159,7 +163,9 @@ class OpenDialog(QtWidgets.QDialog):
         data = item.data(QtCore.Qt.UserRole)
         publishes = data.get("publishes", [])
         if not publishes:
-            QtWidgets.QMessageBox.critical(self, "Invalid Selection", "No publishes found for selection.")
+            QtWidgets.QMessageBox.critical(
+                self, "Invalid Selection", "No publishes found for selection."
+            )
             return
 
         latest = publishes[0]
@@ -170,7 +176,9 @@ class OpenDialog(QtWidgets.QDialog):
             print(f"[oom] Opened HIP file: {path}")
             self.close()
         except Exception as e:
-            QtWidgets.QMessageBox.critical(self, "Open Failed", f"Failed to open HIP file:\n{e}")
+            QtWidgets.QMessageBox.critical(
+                self, "Open Failed", f"Failed to open HIP file:\n{e}"
+            )
 
     def show_versions(self):
         item = self.publish_list.currentItem()
@@ -181,15 +189,20 @@ class OpenDialog(QtWidgets.QDialog):
         data = item.data(QtCore.Qt.UserRole)
         publishes = data.get("publishes", [])
         if not publishes:
-            QtWidgets.QMessageBox.critical(self, "Invalid Selection", "No publishes found for selection.")
+            QtWidgets.QMessageBox.critical(
+                self, "Invalid Selection", "No publishes found for selection."
+            )
             return
 
         dlg = VersionsDialog(publishes, main_dialog=self, parent=self)
         dlg.setParent(hou.ui.mainQtWindow(), QtCore.Qt.Window)
         dlg.exec()
+
+
 def launch():
     dlg = OpenDialog()
     dlg.setParent(hou.ui.mainQtWindow(), QtCore.Qt.Window)
     dlg.show()
+
 
 launch()
