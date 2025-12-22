@@ -5,11 +5,9 @@ on:
     workflows: ["ci"]
     types:
       - completed
-
 permissions:
   contents: write
   packages: write
-
 jobs:
   publish:
     if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' }}
@@ -27,7 +25,8 @@ jobs:
           extra_nix_config: |
             experimental-features = nix-command flakes
             accept-flake-config = true
-            sandbox = false
+      - name: Build impure uv venv
+        run: nix build --option sandbox relaxed .#oom-uv-bundle
       - name: Publish Houdini Container
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

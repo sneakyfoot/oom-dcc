@@ -97,7 +97,7 @@ let
       repo_root="$(git rev-parse --show-toplevel 2>/dev/null || printf '%s\n' "$PWD")"
       flake_ref="''${FLAKE_REF:-$repo_root}"
   
-      image_tarball="$(nix build "''${flake_ref}#houdini-container" --option sandbox relaxed --no-link --print-out-paths)"
+      image_tarball="$(nix build "''${flake_ref}#houdini-container" --no-link --print-out-paths)"
   
       registry_repo="ghcr.io/sneakyfoot/dcc-runtime"
       creds="''${GITHUB_ACTOR:-sneakyfoot}:''${GITHUB_TOKEN}"
