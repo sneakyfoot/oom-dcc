@@ -61,7 +61,8 @@ spec:
           hostPath:
             path: /etc/group
             type: File
-
+      imagePullSecrets:
+        - name: ghcr-creds
       containers:
         - name: service
           image: "ghcr.io/sneakyfoot/dcc-runtime:{ { OOM_TAG | default('latest') } }"
