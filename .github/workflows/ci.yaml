@@ -1,11 +1,18 @@
 name: ci
 
 on:
-  push:
   pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
 
 jobs:
   lint-and-check:
+    if: ${{ github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: oom-dcc-arc
     steps:
       - uses: actions/checkout@v5
@@ -18,7 +25,6 @@ jobs:
           extra_nix_config: |
             experimental-features = nix-command flakes
             accept-flake-config = true
-            sandbox = false
 
       - name: Build uv bundle
         run: nix build .#oom-uv-bundle --option sandbox relaxed
