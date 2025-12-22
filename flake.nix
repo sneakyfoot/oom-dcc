@@ -48,12 +48,10 @@
         env = {
           UV_MANAGED_PYTHON = "1";
           UV_PROJECT_ENVIRONMENT = ".venv";
-          UV_CACHE_DIR = ".uv-cache";
         };
 
         shellHook = ''
-          export SGTK_PATH="$UV_PROJECT_ENVIRONMENT/lib/python3.11/site-packages"
-          export PYTHONPATH="$SGTK_PATH:$PYTHONPATH"
+          echo "Started dev shell"
         '';
       };
 
