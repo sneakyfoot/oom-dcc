@@ -10,10 +10,7 @@ let
       version = "0.1.0";
       inherit src;
 
-      # Build with: --option sandbox relaxed
       __noChroot = true;
-      preferLocalBuild = true;
-      allowSubstitutes = false;
       dontFixup = true;
 
       nativeBuildInputs = toolchain;

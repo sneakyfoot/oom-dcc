@@ -21,10 +21,10 @@ jobs:
             sandbox = false
 
       - name: Build uv bundle
-        run: nix build .#oom-uv-bundle --impure --option sandbox false
-      - name: Ruff (errors only)
+        run: nix build .#oom-uv-bundle --option sandbox relaxed
+      - name: Ruff
         run: nix develop .#default --command uv run ruff check src 
-      - name: Ty (full src)
+      - name: Ty
         run: nix develop .#default --command uv run ty check src
       - name: Nix flake check
-        run: nix flake check --option sandbox false --impure
+        run: nix flake check
