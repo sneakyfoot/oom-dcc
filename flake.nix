@@ -47,7 +47,6 @@
 
         env = {
           UV_MANAGED_PYTHON = "1";
-          UV_PYTHON_INSTALL_DIR = ".uv-python";
           UV_PROJECT_ENVIRONMENT = ".venv";
           UV_CACHE_DIR = ".uv-cache";
         };
