@@ -1,10 +1,12 @@
-{ pkgs, tkCorePath, uvProjectEnv, python, uv, src}:
+{ pkgs, uvBundle, src }:
 
 let
   cuda = pkgs.cudaPackages_12_8;
-  uvPython = "${python}/bin/python";
+  uvPython = "${uvBundle}/python/bin/python";
+  defaultUvProjectEnv = "${uvBundle}/venv";
+  uvSitePkgs = "${defaultUvProjectEnv}/lib/python3.11/site-packages";
 in rec {
-  inherit uvProjectEnv uvPython tkCorePath;
+  inherit uvPython;
 
   runtimePkgs = (_pkgs: with _pkgs; [
     stdenv.cc.cc.lib
@@ -83,9 +85,7 @@ in rec {
     gnugrep
     which
     procps
-
-    python
-    uv
+    uvBundle
   ]);
 
   runtimeProfile = ''
@@ -102,24 +102,19 @@ in rec {
     export OOM_CORE=${src}
 
     if [ -z "''${UV_PROJECT_ENVIRONMENT:-}" ]; then
-      UV_PROJECT_ENVIRONMENT="$HOME/.cache/uv/venvs/oom-dcc"
+      UV_PROJECT_ENVIRONMENT="${defaultUvProjectEnv}"
     fi
     if [ -z "''${UV_CACHE_DIR:-}" ]; then
       UV_CACHE_DIR="$HOME/.cache/uv/cache"
     fi
 
-    # uv defaults (adjustable by caller)
     export UV_PYTHON=${uvPython}
-    export UV_NO_MANAGED_PYTHON=1
-    export UV_NO_PYTHON_DOWNLOADS=1
     export UV_PROJECT_ENVIRONMENT
     export UV_CACHE_DIR
 
     export PYTHONPATH="''${UV_PROJECT_ENVIRONMENT}/lib/python3.11/site-packages:$PYTHONPATH"
-    export PYTHONPATH=${tkCorePath}:$PYTHONPATH
-    export SGTK_PATH=${tkCorePath}
+    export SGTK_PATH=${uvSitePkgs}
 
-    uv sync --project ${src} --frozen --no-dev
   '';
   dcc-runtime = 
     pkgs.buildFHSEnv {

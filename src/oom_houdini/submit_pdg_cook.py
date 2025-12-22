@@ -331,7 +331,7 @@ def submit_controller_job(
     # Submit to k8s
     try:
         from kubernetes import client
-    except ImportError as exc:
+    except ImportError:
         return False, "The 'kubernetes' Python package is required to submit jobs"
 
     try:

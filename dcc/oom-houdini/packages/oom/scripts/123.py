@@ -1,11 +1,14 @@
-import os, sys, socket
-import oom_sg_tk
-import sgtk
-from oom_bootstrap import bootstrap
-import hou
-import oom_sg_auth
+import os
+import socket
+import sys
 
-print('[oom] Running Startup Script')
+import hou
+import sgtk
+
+import oom_sg_auth
+from oom_bootstrap import bootstrap
+
+print("[oom] Running Startup Script")
 
 # set shotgun home env var for shared /home
 hostname = socket.gethostname()
@@ -31,7 +34,7 @@ else:
     user = oom_sg_auth.oom_auth()
     sg = user.create_sg_connection()
     project = sg.find_one("Project", [["id", "is", project_id]], ["id"])
-    engine,tk,sg = bootstrap(project)
+    engine, tk, sg = bootstrap(project)
 
     # set context from shot
     context = tk.context_from_entity("Shot", shot_id)

@@ -17,7 +17,6 @@ PERSISTENT_MQ_CONFIG = {
 
 # Debug / Dev mode helpers (mirrors scheduler.py)
 def _env_truthy(value):
-
     # Normalize env var values like 1/true/yes/on
     text = str(value).strip().lower()
 
@@ -25,7 +24,6 @@ def _env_truthy(value):
 
 
 def _env_int(value, default):
-
     try:
         if value is None:
             return int(default)
@@ -42,7 +40,6 @@ _DEV_VERBOSE = _env_truthy(os.environ.get("OOM_DEV", ""))
 
 
 def _dprint(*parts):
-
     # Print debug info only when OOM_DEV is enabled
     if not _DEV_VERBOSE:
         return None
@@ -115,9 +112,7 @@ class MQManager:
 
         if not host:
             host = (
-                os.environ.get("OOM_MQ_HOST")
-                or os.environ.get("PDG_MQ_HOST")
-                or ""
+                os.environ.get("OOM_MQ_HOST") or os.environ.get("PDG_MQ_HOST") or ""
             ).strip()
             relay_port = (
                 os.environ.get("OOM_MQ_RELAY_PORT")
@@ -172,7 +167,6 @@ class MQManager:
         return None
 
     def _connect_shared(self, host, relayport, xmlport):
-
         # Guard against incomplete connection details
         if not host or not relayport:
             return False

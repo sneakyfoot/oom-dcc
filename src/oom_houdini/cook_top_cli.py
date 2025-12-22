@@ -15,14 +15,19 @@ Environment:
     OOM_CLI_SUBPROCESS=1      internal flag to avoid re-forking
     OOM_CLI_DEBUG=1           enable debug traces (node discovery, filtering)
 """
+
 import os
 import sys
+
+from oom_houdini.cook_top import _cook_node
+
 # Detach into a background subprocess on first invocation
-if __name__ == '__main__' and not os.environ.get('OOM_CLI_SUBPROCESS'):
+if __name__ == "__main__" and not os.environ.get("OOM_CLI_SUBPROCESS"):
     # Relaunch in a detached session so the cook can continue if the terminal closes
     import subprocess
+
     env = os.environ.copy()
-    env['OOM_CLI_SUBPROCESS'] = '1'
+    env["OOM_CLI_SUBPROCESS"] = "1"
     subprocess.Popen(
         [sys.executable] + sys.argv,
         env=env,
@@ -33,29 +38,27 @@ if __name__ == '__main__' and not os.environ.get('OOM_CLI_SUBPROCESS'):
 
 import re
 from glob import glob
+
 # enable debug logs when set
-DEBUG = bool(os.environ.get('OOM_CLI_DEBUG'))
+DEBUG = bool(os.environ.get("OOM_CLI_DEBUG"))
 
 # Bootstrap Houdini Python API (must be done before importing hou)
-import oom_houdini.oom_hou  # noqa: E402
 import hou  # noqa: E402
-
-from oom_houdini.cook_top import _cook_node
 
 
 def find_hip_path(hip_name: str) -> str:
     """Find the most recent hip file matching <hip_name> under the current shot context."""
-    shot_path = os.environ.get('OOM_SHOT_PATH')
+    shot_path = os.environ.get("OOM_SHOT_PATH")
     if not shot_path:
-        print('Error: OOM_SHOT_PATH not set. Run oom-context first.', file=sys.stderr)
+        print("Error: OOM_SHOT_PATH not set. Run oom-context first.", file=sys.stderr)
         sys.exit(1)
     # Look for HIP files in any step-specific houdini task folder (per shotgun templates)
-    tasks_root = os.path.join(shot_path, 'tasks')
+    tasks_root = os.path.join(shot_path, "tasks")
     # patterns: try .hip first, then .hiplc
     patterns = [f"{hip_name}.v*.hip", f"{hip_name}.v*.hiplc"]
     candidates: list[str] = []
     # search under tasks/<Step>/houdini
-    for houdini_dir in glob(os.path.join(tasks_root, '*', 'houdini')):
+    for houdini_dir in glob(os.path.join(tasks_root, "*", "houdini")):
         for pat in patterns:
             found = glob(os.path.join(houdini_dir, pat))
             if found:
@@ -80,7 +83,7 @@ def find_hip_path(hip_name: str) -> str:
 
 def find_top_nodes() -> list[hou.Node]:
     """Recursively collect all TOP nodes under /obj."""
-    root = hou.node('/obj')
+    root = hou.node("/obj")
     if not root:
         return []
     result: list[hou.Node] = []
@@ -89,10 +92,13 @@ def find_top_nodes() -> list[hou.Node]:
         for child in node.children():
             # accept any node in a TOP/PDG context (covers Topnet and PDG networks)
             cat = child.type().category().name().lower()
-            if 'top' in cat or 'pdg' in cat:
+            if "top" in cat or "pdg" in cat:
                 result.append(child)
                 # debug: log node type and category
-                print(f"[oom:debug] found TOP/PDG node: {child.path()} (type={child.type().name()}, cat={cat})", file=sys.stderr)
+                print(
+                    f"[oom:debug] found TOP/PDG node: {child.path()} (type={child.type().name()}, cat={cat})",
+                    file=sys.stderr,
+                )
             walk(child)
 
     walk(root)
@@ -104,29 +110,43 @@ def find_node(description: str) -> str:
     desc = description.lower()
     nodes = find_top_nodes()
     if DEBUG:
-        print(f"[oom:debug] found {len(nodes)} TOP/PDG nodes: {[n.path() for n in nodes]}",
-              file=sys.stderr)
+        print(
+            f"[oom:debug] found {len(nodes)} TOP/PDG nodes: {[n.path() for n in nodes]}",
+            file=sys.stderr,
+        )
     # Filter by common type keywords
-    if 'null' in desc:
-        nodes = [n for n in nodes if 'null' in n.type().name().lower()]
+    if "null" in desc:
+        nodes = [n for n in nodes if "null" in n.type().name().lower()]
     # Filter by matching name or path substrings
-    candidates = [n for n in nodes if desc in n.name().lower() or desc in n.path().lower()]
+    candidates = [
+        n for n in nodes if desc in n.name().lower() or desc in n.path().lower()
+    ]
     if DEBUG:
-        print(f"[oom:debug] matching '{description}': {[n.path() for n in candidates]}",
-              file=sys.stderr)
+        print(
+            f"[oom:debug] matching '{description}': {[n.path() for n in candidates]}",
+            file=sys.stderr,
+        )
     if not candidates:
-        print(f'No TOP nodes found matching description: {description}', file=sys.stderr)
+        print(
+            f"No TOP nodes found matching description: {description}", file=sys.stderr
+        )
         sys.exit(1)
     if len(candidates) > 1:
-        paths = ', '.join(n.path() for n in candidates)
-        print(f"Ambiguous description '{description}', candidates: {paths}", file=sys.stderr)
+        paths = ", ".join(n.path() for n in candidates)
+        print(
+            f"Ambiguous description '{description}', candidates: {paths}",
+            file=sys.stderr,
+        )
         sys.exit(1)
     return candidates[0].path()
 
 
 def main(argv: list[str]) -> None:
     if len(argv) != 3:
-        print(f"Usage: {os.path.basename(argv[0])} <hip_name> <node_description>", file=sys.stderr)
+        print(
+            f"Usage: {os.path.basename(argv[0])} <hip_name> <node_description>",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     hip_name, description = argv[1], argv[2]
@@ -144,5 +164,5 @@ def main(argv: list[str]) -> None:
     print("[oom] Cook complete.")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main(sys.argv)

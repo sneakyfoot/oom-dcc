@@ -22,7 +22,9 @@ def _format_date(val):
 class VersionsDialog(QtWidgets.QDialog):
     """Dialog to select a specific published file version."""
 
-    def __init__(self, publishes, node, main_dialog=None, parent=None, title="Select Version"):
+    def __init__(
+        self, publishes, node, main_dialog=None, parent=None, title="Select Version"
+    ):
         super(VersionsDialog, self).__init__(parent)
 
         self.node = node
@@ -41,7 +43,7 @@ class VersionsDialog(QtWidgets.QDialog):
 
         for pub in publishes:
             created = _format_date(pub.get("created_at"))
-            label = f'v{pub["version_number"]:03d}  ({created})'
+            label = f"v{pub['version_number']:03d}  ({created})"
             item = QtWidgets.QListWidgetItem(label)
             item.setData(QtCore.Qt.UserRole, pub["path"]["local_path"])
             self.version_list.addItem(item)
@@ -49,7 +51,9 @@ class VersionsDialog(QtWidgets.QDialog):
     def load_version(self):
         item = self.version_list.currentItem()
         if not item:
-            QtWidgets.QMessageBox.warning(self, "No Selection", "Please select a version to load.")
+            QtWidgets.QMessageBox.warning(
+                self, "No Selection", "Please select a version to load."
+            )
             return
 
         path = item.data(QtCore.Qt.UserRole)
@@ -59,7 +63,9 @@ class VersionsDialog(QtWidgets.QDialog):
                 self.main_dialog.close()
             self.accept()
         except Exception as e:
-            QtWidgets.QMessageBox.critical(self, "Load Failed", f"Failed to set filename:\n{e}")
+            QtWidgets.QMessageBox.critical(
+                self, "Load Failed", f"Failed to set filename:\n{e}"
+            )
 
 
 class BrowseDialog(QtWidgets.QDialog):
@@ -235,9 +241,7 @@ class BrowseDialog(QtWidgets.QDialog):
 
         # Show all Steps configured for this entity type in SG
         steps = self.sg.find(
-            "Step",
-            [["entity_type", "is", self.entity["type"]]],
-            ["code", "name"]
+            "Step", [["entity_type", "is", self.entity["type"]]], ["code", "name"]
         )
         for step in steps:
             self.step_field.addItem(step.get("code") or step.get("name"), step)
@@ -252,7 +256,7 @@ class BrowseDialog(QtWidgets.QDialog):
             "Sequence",
             [["project", "is", self.project]],
             ["code"],
-            order=[{"field_name": "code", "direction": "asc"}]
+            order=[{"field_name": "code", "direction": "asc"}],
         )
 
         for seq in sequences:
@@ -274,7 +278,7 @@ class BrowseDialog(QtWidgets.QDialog):
             "Shot",
             filters,
             ["code", "sg_sequence"],
-            order=[{"field_name": "code", "direction": "asc"}]
+            order=[{"field_name": "code", "direction": "asc"}],
         )
 
         for shot in shots:
@@ -306,19 +310,35 @@ class BrowseDialog(QtWidgets.QDialog):
                 selected_code = self.type_field.currentData()
 
             if selected_code:
-                filters.append(["published_file_type.PublishedFileType.code", "is", selected_code])
+                filters.append(
+                    ["published_file_type.PublishedFileType.code", "is", selected_code]
+                )
             else:
-                filters.append(["published_file_type.PublishedFileType.code", "in", list(self.published_file_type)])
+                filters.append(
+                    [
+                        "published_file_type.PublishedFileType.code",
+                        "in",
+                        list(self.published_file_type),
+                    ]
+                )
         else:
-            filters.append(["published_file_type.PublishedFileType.code", "is", self.published_file_type])
+            filters.append(
+                [
+                    "published_file_type.PublishedFileType.code",
+                    "is",
+                    self.published_file_type,
+                ]
+            )
         step = self.step_field.currentData()
         if step:
             # SG-native: rely on Task->Step relationship only
             filters.append(["task.Task.step", "is", step])
         fields = ["code", "version_number", "path", "created_at"]
         publishes = self.sg.find(
-            "PublishedFile", filters, fields,
-            order=[{"field_name": "version_number", "direction": "desc"}]
+            "PublishedFile",
+            filters,
+            fields,
+            order=[{"field_name": "version_number", "direction": "desc"}],
         )
 
         grouped = {}
@@ -329,7 +349,7 @@ class BrowseDialog(QtWidgets.QDialog):
         for code, items in grouped.items():
             latest = items[0]
             created = _format_date(latest.get("created_at"))
-            label = f'{code}  v{latest["version_number"]:03d}  ({created})'
+            label = f"{code}  v{latest['version_number']:03d}  ({created})"
             item = QtWidgets.QListWidgetItem(label)
             item.setData(QtCore.Qt.UserRole, {"code": code, "publishes": items})
             self.publish_list.addItem(item)
@@ -343,7 +363,9 @@ class BrowseDialog(QtWidgets.QDialog):
         data = item.data(QtCore.Qt.UserRole)
         publishes = data.get("publishes", [])
         if not publishes:
-            QtWidgets.QMessageBox.critical(self, "Invalid Selection", "No publishes found for selection.")
+            QtWidgets.QMessageBox.critical(
+                self, "Invalid Selection", "No publishes found for selection."
+            )
             return
 
         latest = publishes[0]
@@ -352,7 +374,9 @@ class BrowseDialog(QtWidgets.QDialog):
             self.node.parm("filename").set(path)
             self.close()
         except Exception as e:
-            QtWidgets.QMessageBox.critical(self, "Load Failed", f"Failed to set filename:\n{e}")
+            QtWidgets.QMessageBox.critical(
+                self, "Load Failed", f"Failed to set filename:\n{e}"
+            )
 
     def show_versions(self):
         item = self.publish_list.currentItem()
@@ -363,7 +387,9 @@ class BrowseDialog(QtWidgets.QDialog):
         data = item.data(QtCore.Qt.UserRole)
         publishes = data.get("publishes", [])
         if not publishes:
-            QtWidgets.QMessageBox.critical(self, "Invalid Selection", "No publishes found for selection.")
+            QtWidgets.QMessageBox.critical(
+                self, "Invalid Selection", "No publishes found for selection."
+            )
             return
 
         # Build a friendly title for versions dialog
@@ -372,8 +398,13 @@ class BrowseDialog(QtWidgets.QDialog):
         else:
             t = str(self.published_file_type)
 
-        dlg = VersionsDialog(publishes, node=self.node, main_dialog=self, parent=self,
-                             title=f"Select {t} Version")
+        dlg = VersionsDialog(
+            publishes,
+            node=self.node,
+            main_dialog=self,
+            parent=self,
+            title=f"Select {t} Version",
+        )
         dlg.setParent(hou.ui.mainQtWindow(), QtCore.Qt.Window)
         dlg.exec()
 
@@ -425,9 +456,17 @@ def update_to_latest(target, published_file_type, is_path=False) -> None:
     current_publish = None
     type_filter = None
     if isinstance(published_file_type, (list, tuple)):
-        type_filter = ["published_file_type.PublishedFileType.code", "in", list(published_file_type)]
+        type_filter = [
+            "published_file_type.PublishedFileType.code",
+            "in",
+            list(published_file_type),
+        ]
     else:
-        type_filter = ["published_file_type.PublishedFileType.code", "is", published_file_type]
+        type_filter = [
+            "published_file_type.PublishedFileType.code",
+            "is",
+            published_file_type,
+        ]
 
     candidates = sg.find(
         "PublishedFile",

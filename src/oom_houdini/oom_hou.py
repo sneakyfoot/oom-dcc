@@ -44,6 +44,7 @@ from pathlib import Path
 # --- Official Houdini setup via houdini_setup.sh ---
 import subprocess
 
+
 def _capture_houdini_env(hfs_path: str) -> None:
     """Source houdini_setup.sh and import all resulting env vars into os.environ."""
     # Change to HFS root so houdini_setup_bash correctly detects its install directory
@@ -55,8 +56,11 @@ def _capture_houdini_env(hfs_path: str) -> None:
         key, val = kv.split(b"=", 1)
         os.environ[key.decode()] = val.decode()
 
+
 # Determine HFS root (fall back to default if necessary)
-_default_hfs = os.environ.get("HFS", "/mnt/RAID/Assets/HQ/houdini_distros/hfs.linux-x86_64")
+_default_hfs = os.environ.get(
+    "HFS", "/mnt/RAID/Assets/HQ/houdini_distros/hfs.linux-x86_64"
+)
 os.environ.setdefault("HFS", _default_hfs)
 
 # Source the official Houdini setup and import resulting env

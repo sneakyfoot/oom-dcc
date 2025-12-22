@@ -9,6 +9,5 @@ This package exists to satisfy build tooling expectations (distribution name
 import oom_bootstrap  # noqa: F401
 import oom_sg_auth  # noqa: F401
 import oom_sg_io  # noqa: F401
-import oom_sg_tk  # noqa: F401
 
-__all__ = ["oom_bootstrap", "oom_sg_auth", "oom_sg_io", "oom_sg_tk"]
+__all__ = ["oom_bootstrap", "oom_sg_auth", "oom_sg_io"]

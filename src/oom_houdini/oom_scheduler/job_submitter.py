@@ -52,7 +52,7 @@ class JobSubmitter:
         *,
         mq_client_id: Optional[str],
         result_server: Optional[str],
-        ):
+    ):
         import pdg
         from oom_houdini.oom_scheduler.job_builder import build_job_manifest
         from oom_kube.helpers import load_kube, create_job
@@ -89,7 +89,9 @@ class JobSubmitter:
             gpu_flag = 0
 
         try:
-            priority_class = getattr(owner, "get_priority_class", lambda: "farm-default")()
+            priority_class = getattr(
+                owner, "get_priority_class", lambda: "farm-default"
+            )()
         except Exception as exc:
             _log_exception("submit_work_item:get_priority_class", exc)
             priority_class = "farm-default"
@@ -107,8 +109,8 @@ class JobSubmitter:
             ram_gb = 0
 
         # Preserve previous defaults when parms are unset
-        cpu_arg = (int(cpu_cores) if int(cpu_cores) > 0 else 10)
-        mem_arg = (int(ram_gb) if int(ram_gb) > 0 else 32)
+        cpu_arg = int(cpu_cores) if int(cpu_cores) > 0 else 10
+        mem_arg = int(ram_gb) if int(ram_gb) > 0 else 32
 
         manifest = build_job_manifest(
             None,
@@ -179,7 +181,9 @@ class JobSubmitter:
         command = command.replace("__PDG_PYTHON__", self._hython_bin)
         command = command.replace("__PDG_HYTHON__", self._hython_bin)
         command = command.replace("__PDG_HFS__", self._hfs)
-        command = command.replace("__PDG_SCRIPTDIR__", self._owner.scriptDir(False) or "")
+        command = command.replace(
+            "__PDG_SCRIPTDIR__", self._owner.scriptDir(False) or ""
+        )
 
         parts = shlex.split(command)
         return " ".join(shlex.quote(arg) for arg in parts)
@@ -274,11 +278,17 @@ class JobSubmitter:
             job_name = info["job_name"]
 
             try:
-                job = batch_api.read_namespaced_job_status(name=job_name, namespace=namespace)
+                job = batch_api.read_namespaced_job_status(
+                    name=job_name, namespace=namespace
+                )
             except Exception as exc:
                 if client_mod is not None:
                     api_exc = getattr(client_mod, "exceptions", None)
-                    if api_exc and isinstance(exc, api_exc.ApiException) and exc.status == 404:
+                    if (
+                        api_exc
+                        and isinstance(exc, api_exc.ApiException)
+                        and exc.status == 404
+                    ):
                         updates.append(
                             {
                                 "state": "failed",
@@ -415,7 +425,9 @@ class JobSubmitter:
             return None
 
         for pod in getattr(pods, "items", []) or []:
-            statuses = getattr(getattr(pod, "status", None), "container_statuses", None) or []
+            statuses = (
+                getattr(getattr(pod, "status", None), "container_statuses", None) or []
+            )
             for status in statuses:
                 state = getattr(status, "state", None)
                 terminated = getattr(state, "terminated", None)

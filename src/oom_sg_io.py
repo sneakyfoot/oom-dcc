@@ -27,14 +27,30 @@ def find_publishes(
     - Returns a list of dicts as returned by SG API.
     """
     if fields is None:
-        fields = ["code", "name", "version_number", "path", "created_at", "task", "task.Task.step"]
+        fields = [
+            "code",
+            "name",
+            "version_number",
+            "path",
+            "created_at",
+            "task",
+            "task.Task.step",
+        ]
 
     filters = [["project", "is", project], ["entity", "is", entity]]
 
     if isinstance(published_file_types, (list, tuple, set)):
-        filters.append(["published_file_type.PublishedFileType.code", "in", list(published_file_types)])
+        filters.append(
+            [
+                "published_file_type.PublishedFileType.code",
+                "in",
+                list(published_file_types),
+            ]
+        )
     else:
-        filters.append(["published_file_type.PublishedFileType.code", "is", published_file_types])
+        filters.append(
+            ["published_file_type.PublishedFileType.code", "is", published_file_types]
+        )
 
     if step:
         filters.append(["task.Task.step", "is", step])
@@ -66,11 +82,12 @@ def latest_for_code(
     fields: Optional[Sequence[str]] = None,
 ):
     """Return the latest publish record for the given publish code."""
-    pubs = find_publishes(sg, project, entity, published_file_types, step=None, fields=fields)
+    pubs = find_publishes(
+        sg, project, entity, published_file_types, step=None, fields=fields
+    )
     # pubs already ordered by version desc by default
     for pub in pubs:
         c = pub.get("code") or pub.get("name")
         if c == code:
             return pub
     return None
-

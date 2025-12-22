@@ -13,8 +13,11 @@ dependencies = [
   "pyyaml>=6.0",
   "rich>=13.0",
   "setuptools>=80.9.0",
+  "sgtk @ git+https://github.com/shotgunsoftware/tk-core.git@62d128a8a3e06fe37cc9de5c6a699415c6b51c70",
 ]
 
 [project.scripts]
 oom = "oom_context:main"
-bubble-k8s = "oom_kube.bubble:main"
+
+[tool.ty.environment]
+extra-paths = ["typings"]

@@ -2,12 +2,8 @@
   description = "OOM DCC pipeline";
 
   inputs.nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
-  inputs.tkcore = {
-    url = "github:shotgunsoftware/tk-core";
-    flake = false;
-  };
 
-  outputs = { self, nixpkgs, tkcore }:
+  outputs = { self, nixpkgs }:
     let
       system = "x86_64-linux";
       pkgs = import nixpkgs {
@@ -17,51 +13,50 @@
       };
 
       src = pkgs.lib.cleanSource ./.;
+      uvBundleNix = import ./nix/uv-bundle.nix {
+        inherit pkgs src;
+        pythonSpec = "3.11";
+        appName = "oom-dcc";
+      };
+      uvBundle = uvBundleNix.uvBundle;
+      uvToolchain = uvBundleNix.toolchain;
 
       shaTag =
         self.shortRev
         or self.dirtyShortRev;
 
-      python = pkgs.python311;
-      uv = pkgs.uv;
-
-      tkCorePath = "${tkcore}/python";
-      uvProjectEnv = "/var/uv/venvs/oom-dcc";
-
       runtime = import ./nix/runtime.nix {
-        inherit pkgs tkCorePath uvProjectEnv python uv src;
+        inherit pkgs uvBundle src;
       };
 
       houdini = import ./nix/houdini.nix {
-        inherit pkgs uvProjectEnv tkCorePath python uv src shaTag;
+        inherit pkgs uvBundle src shaTag;
         runtimePkgs = runtime.runtimePkgs;
         runtimeProfile = runtime.runtimeProfile;
       };
 
       cli = import ./nix/cli.nix {
-        inherit pkgs uvProjectEnv python uv src;
+        inherit pkgs uvBundle src;
       };
     in
     {
       devShells.${system}.default = pkgs.mkShell {
 
         name = "oom-dcc-dev";
-        packages = [ python uv ];
+        packages = uvToolchain;
+
+        env = {
+          UV_MANAGED_PYTHON = "1";
+          UV_PROJECT_ENVIRONMENT = ".venv";
+        };
 
         shellHook = ''
-          export UV_PYTHON=${python}/bin/python
-          export UV_NO_MANAGED_PYTHON=1
-          export UV_NO_PYTHON_DOWNLOADS=1
-          repo_root="$(git rev-parse --show-toplevel 2>/dev/null || printf '%s\n' "$PWD")"
-          export UV_PROJECT_ENVIRONMENT="$repo_root/.venv"
-          export VIRTUAL_ENV="$UV_PROJECT_ENVIRONMENT"
-          export PATH="$VIRTUAL_ENV/bin:$PATH"
-          export SGTK_PATH=${tkCorePath}
-          export PYTHONPATH="$SGTK_PATH:$PYTHONPATH"
+          echo "Started dev shell"
         '';
       };
 
       packages.${system} = {
+        oom-uv-bundle = uvBundle;
         dcc-runtime = runtime.dcc-runtime;
         houdini-fhs = houdini.houdiniFhsEnv;
         houdini = houdini.houdiniWrapper;

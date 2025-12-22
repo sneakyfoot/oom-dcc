@@ -18,24 +18,7 @@
     },
     "root": {
       "inputs": {
-        "nixpkgs": "nixpkgs",
-        "tkcore": "tkcore"
-      }
-    },
-    "tkcore": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1765960231,
-        "narHash": "sha256-gMA264hx7AOyjGUzkSlX2O7zFq5H6LAeGh68vMyUl2k=",
-        "owner": "shotgunsoftware",
-        "repo": "tk-core",
-        "rev": "62d128a8a3e06fe37cc9de5c6a699415c6b51c70",
-        "type": "github"
-      },
-      "original": {
-        "owner": "shotgunsoftware",
-        "repo": "tk-core",
-        "type": "github"
+        "nixpkgs": "nixpkgs"
       }
     }
   },

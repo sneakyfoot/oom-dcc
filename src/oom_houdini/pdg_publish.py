@@ -10,27 +10,24 @@ Notes:
   PublishedFile record — the heavy lifting (rendering/writing) is done by TOPs.
 """
 
-import os, sys
+import os
 from datetime import datetime
 
 import hou
-import sgtk
 
 
 # -----------------------------------------------------------------------------
 # ShotGrid helpers
 # -----------------------------------------------------------------------------
 def _sg_handles():
-
-    tk   = hou.session.oom_tk
-    ctx  = hou.session.oom_context
-    sg   = tk.shotgun
+    tk = hou.session.oom_tk
+    ctx = hou.session.oom_context
+    sg = tk.shotgun
 
     return tk, ctx, sg
 
 
 def _get_pf_type_id(sg, code: str) -> int:
-
     rec = sg.find_one("PublishedFileType", [["code", "is", code]], ["id"])
     if not rec:
         raise RuntimeError(f"PublishedFileType '{code}' not found in ShotGrid")
@@ -38,29 +35,34 @@ def _get_pf_type_id(sg, code: str) -> int:
 
 
 def _published_versions(sg, ctx, pf_type_id: int, name_code: str) -> list[int]:
-
     pubs = sg.find(
         "PublishedFile",
         [
             ["project", "is", ctx.project],
             ["entity", "is", ctx.entity],
-            ["published_file_type", "is", {"type": "PublishedFileType", "id": pf_type_id}],
+            [
+                "published_file_type",
+                "is",
+                {"type": "PublishedFileType", "id": pf_type_id},
+            ],
             ["code", "is", name_code],
         ],
         ["version_number"],
     )
 
-    return sorted({p["version_number"] for p in pubs if p.get("version_number") is not None})
+    return sorted(
+        {p["version_number"] for p in pubs if p.get("version_number") is not None}
+    )
 
 
 def _next_version(sg, ctx, pf_type_id: int, name_code: str) -> int:
-
     versions = _published_versions(sg, ctx, pf_type_id, name_code)
     return (versions[-1] if versions else 0) + 1
 
 
-def _create_publish(sg, ctx, pf_type_id: int, name_code: str, local_path: str, version: int) -> dict:
-
+def _create_publish(
+    sg, ctx, pf_type_id: int, name_code: str, local_path: str, version: int
+) -> dict:
     # Require a Task in context for Task-first workflow
     if not getattr(ctx, "task", None):
         raise RuntimeError(
@@ -128,7 +130,9 @@ def publish_usd_from_cache_node(work_item, cache_node_attr: str = "cache_node") 
     work_item.setStringAttrib("sg_filepath", sg_path)
 
 
-def publish_cache_from_cache_node(work_item, cache_node_attr: str = "cache_node") -> None:
+def publish_cache_from_cache_node(
+    work_item, cache_node_attr: str = "cache_node"
+) -> None:
     """Register a frame-sequence cache publish from a cache HDA node.
 
     Mirrors existing behavior in PDG_PUBLISH_SCRIPTS' "OOM Cache" block:
@@ -155,8 +159,7 @@ def publish_cache_from_cache_node(work_item, cache_node_attr: str = "cache_node"
 
     # SG sequence path uses printf-style tokens
     sg_path = (
-        filename
-        .replace("$F4", "%04d")
+        filename.replace("$F4", "%04d")
         .replace('`chs("wedge_index")`', "%02d")
         .replace('`chs("version")`', "%03d")
     )
@@ -175,10 +178,11 @@ def publish_cache_from_cache_node(work_item, cache_node_attr: str = "cache_node"
 # -----------------------------------------------------------------------------
 # Template-driven sequence publishes (renderpass/comp)
 # -----------------------------------------------------------------------------
-def _sequence_path_from_template(template_name: str, name: str, version: int, frame_pad: int = 4) -> str:
-
+def _sequence_path_from_template(
+    template_name: str, name: str, version: int, frame_pad: int = 4
+) -> str:
     tk, ctx, _ = _sg_handles()
-    template   = tk.templates[template_name]
+    template = tk.templates[template_name]
 
     fields = ctx.as_template_fields(template)
     try:
@@ -186,26 +190,27 @@ def _sequence_path_from_template(template_name: str, name: str, version: int, fr
     except Exception:
         pass
 
-    fields["name"]    = name
-    fields["frame"]   = 1
+    fields["name"] = name
+    fields["frame"] = 1
     fields["version"] = 1
 
     raw = template.apply_fields(fields)
 
     dir_path, fname = os.path.split(raw)
-    dirs            = dir_path.split(os.sep)
-    dirs[-1]        = str(version)
-    dir_expr        = os.sep.join(dirs)
+    dirs = dir_path.split(os.sep)
+    dirs[-1] = str(version)
+    dir_expr = os.sep.join(dirs)
 
     base, rest = fname.split(".", 1)
-    ext       = rest.split(".")[-1]
+    ext = rest.split(".")[-1]
     file_expr = f"{base}.%{frame_pad}d.{ext}"
 
     return os.path.join(dir_expr, file_expr)
 
 
-def publish_renderpass_from_template(work_item, cache_node_attr: str = "cache_node") -> None:
-
+def publish_renderpass_from_template(
+    work_item, cache_node_attr: str = "cache_node"
+) -> None:
     cache_path = work_item.stringAttribValue(cache_node_attr)
     cache_node = hou.node(cache_path)
 
@@ -215,10 +220,12 @@ def publish_renderpass_from_template(work_item, cache_node_attr: str = "cache_no
     publish_name = cache_node.evalParm("name").strip()
 
     tk, ctx, sg = _sg_handles()
-    pf_type_id  = _get_pf_type_id(sg, "oom_renderpass")
-    version     = _next_version(sg, ctx, pf_type_id, publish_name)
+    pf_type_id = _get_pf_type_id(sg, "oom_renderpass")
+    version = _next_version(sg, ctx, pf_type_id, publish_name)
 
-    path = _sequence_path_from_template("oom_renderpass", publish_name, version, frame_pad=4)
+    path = _sequence_path_from_template(
+        "oom_renderpass", publish_name, version, frame_pad=4
+    )
 
     pub = _create_publish(sg, ctx, pf_type_id, publish_name, path, version)
 
@@ -227,7 +234,6 @@ def publish_renderpass_from_template(work_item, cache_node_attr: str = "cache_no
 
 
 def publish_comp_from_template(work_item, cache_node_attr: str = "cache_node") -> None:
-
     cache_path = work_item.stringAttribValue(cache_node_attr)
     cache_node = hou.node(cache_path)
 
@@ -237,13 +243,13 @@ def publish_comp_from_template(work_item, cache_node_attr: str = "cache_node") -
     publish_name = cache_node.evalParm("name").strip()
 
     tk, ctx, sg = _sg_handles()
-    pf_type_id  = _get_pf_type_id(sg, "oom_comp")
-    version     = _next_version(sg, ctx, pf_type_id, publish_name)
+    pf_type_id = _get_pf_type_id(sg, "oom_comp")
+    version = _next_version(sg, ctx, pf_type_id, publish_name)
 
     path = _sequence_path_from_template("oom_comp", publish_name, version, frame_pad=4)
 
     # For the TOP graph, keep some Houdini-friendly variants
-    hou_path   = path.replace("%4d", "$F4")
+    hou_path = path.replace("%4d", "$F4")
     hou_prefix = path.replace("%4d.exr", "")
 
     pub = _create_publish(sg, ctx, pf_type_id, publish_name, path, version)

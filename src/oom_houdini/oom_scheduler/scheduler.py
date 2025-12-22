@@ -13,7 +13,6 @@ from .job_submitter import JobSubmitter
 
 # Debug / Dev mode helpers
 def _env_truthy(value):
-
     # Normalize env var values like 1/true/yes/on
     text = str(value).strip().lower()
 
@@ -24,7 +23,6 @@ _DEV_VERBOSE = _env_truthy(os.environ.get("OOM_DEV", ""))
 
 
 def _dprint(*parts):
-
     # Print debug info only when OOM_DEV is enabled
     if not _DEV_VERBOSE:
         return None
@@ -49,10 +47,12 @@ def _log_exception(context: str, exc: Exception) -> None:
 def _register_scheduler_instance(instance):
     return None
 
+
 class oom_scheduler(EventDispatchMixin, PyScheduler):
     """
     K8s scheduler implementation
     """
+
     def __init__(self, scheduler, name):
         """
         __init__(self, pdg.Scheduler) -> NoneType
@@ -83,32 +83,34 @@ class oom_scheduler(EventDispatchMixin, PyScheduler):
     @classmethod
     def templateBody(cls):
         # Define PDG UI parms for GPU and Priority (0=default, 1=low, 2=high)
-        return json.dumps({
-            "name": "oom_scheduler",
-            "parameters": [
-                {
-                    "name": "gpu",
-                    "type": "bool",
-                    "size": 1,
-                },
-                {
-                    "name": "priority",
-                    "type": "int",
-                    "size": 1,
-                },
-                # Houdini parms for CPU cores and RAM (GiB)
-                {
-                    "name": "cpu",
-                    "type": "int",
-                    "size": 1,
-                },
-                {
-                    "name": "ram",
-                    "type": "int",
-                    "size": 1,
-                },
-            ],
-        })
+        return json.dumps(
+            {
+                "name": "oom_scheduler",
+                "parameters": [
+                    {
+                        "name": "gpu",
+                        "type": "bool",
+                        "size": 1,
+                    },
+                    {
+                        "name": "priority",
+                        "type": "int",
+                        "size": 1,
+                    },
+                    # Houdini parms for CPU cores and RAM (GiB)
+                    {
+                        "name": "cpu",
+                        "type": "int",
+                        "size": 1,
+                    },
+                    {
+                        "name": "ram",
+                        "type": "int",
+                        "size": 1,
+                    },
+                ],
+            }
+        )
 
     def onTransferFile(self, file_path):
         # Placeholder callback
@@ -193,7 +195,9 @@ class oom_scheduler(EventDispatchMixin, PyScheduler):
         self.setScriptDir(scripts, scripts)
 
         # Debug: start info
-        _dprint("onStart", f"cook_id={self._cook_id}", f"base={base}", f"scripts={scripts}")
+        _dprint(
+            "onStart", f"cook_id={self._cook_id}", f"base={base}", f"scripts={scripts}"
+        )
 
         # Spin up MQ server for the session
         try:
@@ -235,9 +239,15 @@ class oom_scheduler(EventDispatchMixin, PyScheduler):
         # Ensure PDG dirs exist (in case onStart didn't run)
         try:
             from oom_houdini.oom_scheduler.storage import ensure_dirs
+
             base = self.workingDir(False)
             scripts = self.scriptDir(False)
-            if not base or not os.path.isdir(base) or not scripts or not os.path.isdir(scripts):
+            if (
+                not base
+                or not os.path.isdir(base)
+                or not scripts
+                or not os.path.isdir(scripts)
+            ):
                 base, scripts = ensure_dirs(self._cook_id)
                 self.setWorkingDir(base, base)
                 self.setTempDir(base, base)
@@ -281,7 +291,7 @@ class oom_scheduler(EventDispatchMixin, PyScheduler):
     def onTick(self):
         # Let MQ manager poll without blocking the UI
         try:
-            #_dprint("onTick", "poll")
+            # _dprint("onTick", "poll")
             self._mq.poll()
         except Exception as exc:
             _log_exception("onTick:mq", exc)
@@ -326,11 +336,11 @@ class oom_scheduler(EventDispatchMixin, PyScheduler):
         return None
 
     def applicationBin(self, name, work_item):
-        if name == 'python':
+        if name == "python":
             path = self._pythonBin()
             _dprint("applicationBin", name, path)
             return path
-        elif name == 'hython':
+        elif name == "hython":
             path = self._hythonBin()
             _dprint("applicationBin", name, path)
             return path
@@ -408,6 +418,7 @@ class oom_scheduler(EventDispatchMixin, PyScheduler):
 
     def _shutdown_cleanup(self, source: str = "manual") -> None:
         return None
+
 
 def registerTypes(type_registry):
     type_registry.registerScheduler(oom_scheduler)
