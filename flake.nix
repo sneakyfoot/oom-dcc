@@ -51,7 +51,8 @@
         };
 
         shellHook = ''
-          echo "Started dev shell"
+          source ./.venv/bin/activate
+          zsh
         '';
       };
 

@@ -15,6 +15,7 @@ except Exception:
     hou.ui.displayMessage("No TOP node was selected.")
     sys.exit()
 
+
 def _pick_python_bin():
     """Pick facility python using env var or standard PVC mount, else current."""
 
@@ -45,6 +46,7 @@ def submit_controller_job(hip: str, node: str):
     # Try in-process submit using current Houdini Python
     try:
         from oom_houdini.submit_pdg_cook import submit_controller_job as _do_submit
+
         ok, msg = _do_submit(hip, node)
         return ok, msg
     except ImportError as e:
@@ -64,6 +66,7 @@ def submit_controller_job(hip: str, node: str):
             return True, out.strip()
         except subprocess.CalledProcessError as e2:
             return False, e2.output.strip() if e2.output else str(e2)
+
 
 def cook_in_session(node_path):
     """Cook the TOP node inside the running Houdini session via core module."""

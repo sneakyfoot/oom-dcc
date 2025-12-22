@@ -106,7 +106,7 @@ class MQManager:
             return self._config_cache
 
         config = PERSISTENT_MQ_CONFIG or {}
-        host = (config.get("host") or "").strip()
+        host = str(config.get("host") or "").strip()
         relay_port = config.get("relay_port", DEFAULT_RELAY_PORT)
         callback_port = config.get("callback_port", DEFAULT_CALLBACK_PORT)
 

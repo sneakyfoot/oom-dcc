@@ -21,7 +21,12 @@ def _repo_root_from_env_or_self() -> Path:
 # Prefer the uv-managed env (matches flake shell defaults).
 _default_uv_env = Path.home() / ".cache" / "uv" / "venvs" / "oom-dcc"
 uv_env = Path(os.environ.get("UV_PROJECT_ENVIRONMENT", str(_default_uv_env)))
-_add(uv_env / "lib" / f"python{sys.version_info.major}.{sys.version_info.minor}" / "site-packages")
+_add(
+    uv_env
+    / "lib"
+    / f"python{sys.version_info.major}.{sys.version_info.minor}"
+    / "site-packages"
+)
 
 # Repo source tree (handy for dev overrides)
 repo_root = _repo_root_from_env_or_self()

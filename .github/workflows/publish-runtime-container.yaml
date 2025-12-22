@@ -1,8 +1,10 @@
 name: publish-container
 
 on:
-  push:
-    branches: [main]
+  workflow_run:
+    workflows: ["ci"]
+    types:
+      - completed
 
 permissions:
   contents: write
@@ -10,12 +12,14 @@ permissions:
 
 jobs:
   publish:
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' }}
     runs-on: oom-dcc-arc
     steps:
       - run: sudo apt-get update && sudo apt-get install -y xz-utils
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
+          ref: ${{ github.event.workflow_run.head_sha }}
       - uses: cachix/install-nix-action@v31
         with:
           nix_path: nixpkgs=channel:nixos-unstable

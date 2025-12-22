@@ -53,7 +53,7 @@ def find_hip_path(hip_name: str) -> str:
         print("Error: OOM_SHOT_PATH not set. Run oom-context first.", file=sys.stderr)
         sys.exit(1)
     # Look for HIP files in any step-specific houdini task folder (per shotgun templates)
-    tasks_root = os.path.join(shot_path, "tasks")
+    tasks_root = os.path.join(str(shot_path), "tasks")
     # patterns: try .hip first, then .hiplc
     patterns = [f"{hip_name}.v*.hip", f"{hip_name}.v*.hiplc"]
     candidates: list[str] = []

@@ -3,12 +3,16 @@ import os, datetime
 # Prefer PySide6 (Nuke 14+), fallback to PySide2
 try:
     from PySide6 import QtWidgets, QtCore  # type: ignore
+
     def _dialog_exec(dlg):
         return dlg.exec()
 except Exception:
     from PySide2 import QtWidgets, QtCore  # type: ignore
+
     def _dialog_exec(dlg):
         return dlg.exec_()
+
+
 import nuke
 
 
@@ -16,7 +20,7 @@ import nuke
 def _script_modified():
     try:
         # Some Nuke versions expose a module-level function
-        if hasattr(nuke, 'scriptModified'):
+        if hasattr(nuke, "scriptModified"):
             return bool(nuke.scriptModified())
     except Exception:
         pass
@@ -30,6 +34,8 @@ def _script_modified():
         return bool(nuke.root().modified())
     except Exception:
         return False
+
+
 def _format_date(val):
     if not val:
         return ""
@@ -48,9 +54,9 @@ def _format_date(val):
 
 def _ensure_toolkit():
     # Try to reuse bootstrapped session from init.py, fallback to site bootstrap
-    engine = getattr(nuke, 'oom_engine', None)
-    tk = getattr(nuke, 'oom_tk', None)
-    context = getattr(nuke, 'oom_context', None)
+    engine = getattr(nuke, "oom_engine", None)
+    tk = getattr(nuke, "oom_tk", None)
+    context = getattr(nuke, "oom_context", None)
 
     if engine and tk and context:
         return engine, tk, tk.shotgun, context
@@ -58,11 +64,16 @@ def _ensure_toolkit():
     try:
         import oom_sg_tk  # noqa: F401
         from oom_bootstrap import bootstrap
+
         engine, tk, sg = bootstrap()
         # Best-effort: context from current script path
         path = nuke.root().name()
         try:
-            context = tk.context_from_path(path) if path and os.path.isabs(path) else tk.context_empty()
+            context = (
+                tk.context_from_path(path)
+                if path and os.path.isabs(path)
+                else tk.context_empty()
+            )
         except Exception:
             context = tk.context_empty()
         nuke.oom_engine = engine
@@ -95,7 +106,7 @@ class VersionsDialog(QtWidgets.QDialog):
         self.publishes = publishes
         for pub in self.publishes:
             created = _format_date(pub.get("created_at"))
-            label = f'v{pub["version_number"]:03d}  ({created})'
+            label = f"v{pub['version_number']:03d}  ({created})"
             item = QtWidgets.QListWidgetItem(label)
             item.setData(QtCore.Qt.UserRole, pub["path"]["local_path"])
             self.version_list.addItem(item)
@@ -103,7 +114,9 @@ class VersionsDialog(QtWidgets.QDialog):
     def open_version(self):
         item = self.version_list.currentItem()
         if not item:
-            QtWidgets.QMessageBox.warning(self, "No Selection", "Please select a version to open.")
+            QtWidgets.QMessageBox.warning(
+                self, "No Selection", "Please select a version to open."
+            )
             return
 
         path = item.data(QtCore.Qt.UserRole)
@@ -117,7 +130,9 @@ class VersionsDialog(QtWidgets.QDialog):
                 self.main_dialog.close()
             self.accept()
         except Exception as e:
-            QtWidgets.QMessageBox.critical(self, "Open Failed", f"Failed to open script:\n{e}")
+            QtWidgets.QMessageBox.critical(
+                self, "Open Failed", f"Failed to open script:\n{e}"
+            )
 
 
 def _main_window():
@@ -172,11 +187,11 @@ class OpenDialog(QtWidgets.QDialog):
         self.step_field.addItem("All Steps", None)
 
         entity_type = self.entity["type"] if self.entity else None
-        self.pipeline_steps = self.sg.find(
-            "Step",
-            [["entity_type", "is", entity_type]],
-            ["code", "name"]
-        ) if entity_type else []
+        self.pipeline_steps = (
+            self.sg.find("Step", [["entity_type", "is", entity_type]], ["code", "name"])
+            if entity_type
+            else []
+        )
         for step in self.pipeline_steps:
             self.step_field.addItem(step.get("code") or step.get("name"), step)
 
@@ -198,8 +213,10 @@ class OpenDialog(QtWidgets.QDialog):
 
         fields = ["code", "version_number", "path", "created_at"]
         publishes = self.sg.find(
-            "PublishedFile", filters, fields,
-            order=[{"field_name": "version_number", "direction": "desc"}]
+            "PublishedFile",
+            filters,
+            fields,
+            order=[{"field_name": "version_number", "direction": "desc"}],
         )
 
         grouped = {}
@@ -211,7 +228,7 @@ class OpenDialog(QtWidgets.QDialog):
         for code, items in grouped.items():
             latest = items[0]
             created = _format_date(latest.get("created_at"))
-            label = f'{code}  v{latest["version_number"]:03d}  ({created})'
+            label = f"{code}  v{latest['version_number']:03d}  ({created})"
             item = QtWidgets.QListWidgetItem(label)
             item.setData(QtCore.Qt.UserRole, {"code": code, "publishes": items})
             self.publish_list.addItem(item)
@@ -225,7 +242,9 @@ class OpenDialog(QtWidgets.QDialog):
         data = item.data(QtCore.Qt.UserRole)
         publishes = data.get("publishes", [])
         if not publishes:
-            QtWidgets.QMessageBox.critical(self, "Invalid Selection", "No publishes found for selection.")
+            QtWidgets.QMessageBox.critical(
+                self, "Invalid Selection", "No publishes found for selection."
+            )
             return
 
         latest = publishes[0]
@@ -239,7 +258,9 @@ class OpenDialog(QtWidgets.QDialog):
             print(f"[oom] Opened Nuke script: {path}")
             self.close()
         except Exception as e:
-            QtWidgets.QMessageBox.critical(self, "Open Failed", f"Failed to open script:\n{e}")
+            QtWidgets.QMessageBox.critical(
+                self, "Open Failed", f"Failed to open script:\n{e}"
+            )
 
     def show_versions(self):
         item = self.publish_list.currentItem()
@@ -250,7 +271,9 @@ class OpenDialog(QtWidgets.QDialog):
         data = item.data(QtCore.Qt.UserRole)
         publishes = data.get("publishes", [])
         if not publishes:
-            QtWidgets.QMessageBox.critical(self, "Invalid Selection", "No publishes found for selection.")
+            QtWidgets.QMessageBox.critical(
+                self, "Invalid Selection", "No publishes found for selection."
+            )
             return
 
         dlg = VersionsDialog(publishes, main_dialog=self, parent=self)
@@ -269,6 +292,6 @@ def launch():
             dlg.activateWindow()
         except Exception:
             pass
-        print('[oom] OpenDialog launched')
+        print("[oom] OpenDialog launched")
     except Exception as e:
         nuke.message(f"[oom] Failed to launch OpenDialog:\n{e}")

@@ -19,9 +19,9 @@ _VERSION_DIALOG_REF = None
 
 
 def _ensure_toolkit():
-    engine = getattr(nuke, 'oom_engine', None)
-    tk = getattr(nuke, 'oom_tk', None)
-    context = getattr(nuke, 'oom_context', None)
+    engine = getattr(nuke, "oom_engine", None)
+    tk = getattr(nuke, "oom_tk", None)
+    context = getattr(nuke, "oom_context", None)
 
     if engine and tk:
         return engine, tk, tk.shotgun, context
@@ -29,8 +29,9 @@ def _ensure_toolkit():
     try:
         import oom_sg_tk  # noqa: F401
         from oom_bootstrap import bootstrap
+
         engine, tk, sg = bootstrap()
-        context = getattr(nuke, 'oom_context', None)
+        context = getattr(nuke, "oom_context", None)
         nuke.oom_engine = engine
         nuke.oom_tk = tk
         return engine, tk, sg, context
@@ -59,7 +60,11 @@ class VersionUpDialog(QtWidgets.QDialog):
     def version_up(self):
         try:
             current_path = nuke.root().name()
-            if not current_path or current_path in (None, 'Root', 'Untitled') or not os.path.isabs(current_path):
+            if (
+                not current_path
+                or current_path in (None, "Root", "Untitled")
+                or not os.path.isabs(current_path)
+            ):
                 QtWidgets.QMessageBox.critical(
                     self,
                     "No Script File",
@@ -69,11 +74,15 @@ class VersionUpDialog(QtWidgets.QDialog):
 
             template = self.tk.templates.get("oom_nuke_file")
             if not template:
-                QtWidgets.QMessageBox.critical(self, "Template Error", "Missing template: oom_nuke_file")
+                QtWidgets.QMessageBox.critical(
+                    self, "Template Error", "Missing template: oom_nuke_file"
+                )
                 return
 
             fields = template.get_fields(current_path)
-            all_versions = self.tk.paths_from_template(template, fields, skip_keys=["version"])
+            all_versions = self.tk.paths_from_template(
+                template, fields, skip_keys=["version"]
+            )
 
             version_numbers = []
             for p in all_versions:
@@ -100,7 +109,9 @@ class VersionUpDialog(QtWidgets.QDialog):
                 return
 
             try:
-                pft = self.sg.find_one("PublishedFileType", [["code", "is", "oom_nuke_file"]])
+                pft = self.sg.find_one(
+                    "PublishedFileType", [["code", "is", "oom_nuke_file"]]
+                )
                 if not pft:
                     raise RuntimeError("Missing PublishedFileType: oom_nuke_file")
 
@@ -122,10 +133,14 @@ class VersionUpDialog(QtWidgets.QDialog):
 
                 published_file = self.sg.create("PublishedFile", publish_data)
                 print(f"[oom] Published versioned script to ShotGrid: {published_file}")
-                QtWidgets.QMessageBox.information(self, "Success", f"Versioned up and published:\n{new_path}")
+                QtWidgets.QMessageBox.information(
+                    self, "Success", f"Versioned up and published:\n{new_path}"
+                )
                 self.close()
             except Exception as e:
-                QtWidgets.QMessageBox.warning(self, "Publish Warning", f"Saved script but failed to publish:\n{e}")
+                QtWidgets.QMessageBox.warning(
+                    self, "Publish Warning", f"Saved script but failed to publish:\n{e}"
+                )
 
         except Exception as e:
             QtWidgets.QMessageBox.critical(self, "Error", f"Failed to version up:\n{e}")
@@ -138,9 +153,10 @@ def launch():
         _VERSION_DIALOG_REF = dlg
         dlg.show()
         try:
-            dlg.raise_(); dlg.activateWindow()
+            dlg.raise_()
+            dlg.activateWindow()
         except Exception:
             pass
-        print('[oom] VersionUpDialog launched')
+        print("[oom] VersionUpDialog launched")
     except Exception as e:
         nuke.message(f"[oom] Failed to launch VersionUpDialog:\n{e}")
