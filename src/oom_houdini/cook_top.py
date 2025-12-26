@@ -1,5 +1,7 @@
-import hou
 import sys
+
+import hou
+
 from oom_houdini import oom_cache
 
 
@@ -59,7 +61,7 @@ def pre_update_cache(upstream_nodes):
         elif node_type == "oom_cache" or node_type == "oom_lop_publish":
             target_node = cache_node
         else:
-            return
+            continue
         # refresh versions (disambiguate by publish type based on filename)
         cache_name = target_node.parm("name").eval()
         pf_code = None
@@ -85,8 +87,6 @@ def pre_update_cache(upstream_nodes):
         oom_cache.store_versions(target_node, versions)
         target_node.parm("selected_version").set(str(new_version))
         target_node.parm("version").set(0)
-        # spare_versions = target_node.parm("spare_versions").eval()
-        # print(spare_versions)
 
 
 def _cook_node(node_path: str, *, block: bool = True) -> None:

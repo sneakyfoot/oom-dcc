@@ -1,12 +1,12 @@
-import subprocess
-import hou
-import sys
-import time
 import ast
 import os
+import subprocess
+import sys
+import time
+
+import hou
 
 from oom_houdini import cook_top
-
 
 hip_path = hou.hipFile.path()
 try:
