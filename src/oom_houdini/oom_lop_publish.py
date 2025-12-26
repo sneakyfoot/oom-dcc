@@ -50,9 +50,9 @@ def populate_lop(kwargs: dict) -> None:
     dir_expr = os.sep.join(dirs)
 
     base, wedge_tok, rest = fname.split(".", 2)
-    file_expr = f'{base}.`chs("wedge_index")`.{rest.split(".", 1)[1]}'
+    file_expr = f'{base}.`chs("wedge_index")`.{rest.split(".", 1)[0]}'
 
-    final = os.path.join(dir_expr, fname)
+    final = os.path.join(dir_expr, file_expr)
     node.parm("filename").set(final)
 
     frame_path = final.replace(".usd", ".$F4.usd")
