@@ -32,7 +32,6 @@ def _normalized_op_name(hou_node):
 
 
 def find_all_upstream_nodes(node_path):
-    print("[DEBUG] Finding upstream nodes")
     start_node = hou.node(node_path)
     visited = set()
     result = []
@@ -47,7 +46,6 @@ def find_all_upstream_nodes(node_path):
                 walk(input_node)
 
     walk(start_node)
-    print(f"[DEBUG] Found {len(result)} upstream nodes")
     return result
 
 
@@ -63,7 +61,7 @@ def pre_update_cache(upstream_nodes):
         elif node_type == "oom_cache" or node_type == "oom_lop_publish":
             target_node = cache_node
         else:
-            return
+            continue
         # refresh versions (disambiguate by publish type based on filename)
         cache_name = target_node.parm("name").eval()
         pf_code = None
@@ -89,9 +87,6 @@ def pre_update_cache(upstream_nodes):
         oom_cache.store_versions(target_node, versions)
         target_node.parm("selected_version").set(str(new_version))
         target_node.parm("version").set(0)
-        print(
-            f"[DEBUG] Updated cache node {target_node.path()} to version {new_version}"
-        )
 
 
 def _cook_node(node_path: str, *, block: bool = True) -> None:
