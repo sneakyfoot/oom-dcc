@@ -21,7 +21,7 @@ def populate_lop(kwargs: dict) -> None:
     template and updates version tracking parameters.
     """
     tk = hou.session.oom_tk
-    template = tk.templates["oom_usd_publish"]
+    template = tk.templates["oom_usd_publish_wedged"]
     node = kwargs["node"]
     name_parm = kwargs["parm"]
     publish_name = name_parm.eval()
@@ -35,6 +35,8 @@ def populate_lop(kwargs: dict) -> None:
         template, publish_name=publish_name, include_frame=False
     )
 
+    # cache templates may include a wedge token; set a placeholder so apply works
+    fields["wedge"] = 1
     try:
         raw = template.apply_fields(fields)
     except Exception as e:
@@ -47,10 +49,13 @@ def populate_lop(kwargs: dict) -> None:
     dirs[-1] = '`chs("version")`'
     dir_expr = os.sep.join(dirs)
 
+    base, wedge_tok, rest = fname.split(".", 2)
+    file_expr = f'{base}.`chs("wedge_index")`.{rest.split(".", 1)[1]}'
+
     final = os.path.join(dir_expr, fname)
     node.parm("filename").set(final)
+
     frame_path = final.replace(".usd", ".$F4.usd")
-    # node.parm("filename_single").set(save_path)
     node.parm("filename_frames").set(frame_path)
 
     versions = get_versions(publish_name, "oom_usd_publish")
