@@ -111,11 +111,14 @@ def publish_usd_from_cache_node(work_item, cache_node_attr: str = "cache_node") 
 
     # ShotGrid handles and next version (SG-backed)
     tk, ctx, sg = _sg_handles()
-    pf_type_id = _get_pf_type_id(sg, "oom_usd_publish")
+    pf_type_id = _get_pf_type_id(sg, "oom_usd_publish_wedged")
     version = _next_version(sg, ctx, pf_type_id, cache_name)
 
     # Resolve SG and Houdini paths with concrete version
-    sg_path = filename.replace('`chs("version")`', str(version))
+    sg_path = filename.replace('`chs("version")`', str(version)).replace(
+        '`chs("wedge_index")`', "%02d"
+    )
+
     hou_path = filename.replace('`chs("version")`', str(version))
     hou_path_frames = filename_frames.replace('`chs("version")`', str(version))
     hou_path_clip = hou_path_frames.replace("$F4.usd", "")
