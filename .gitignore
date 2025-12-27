@@ -20,3 +20,6 @@ __pycache__/
 .coverage
 htmlcov/
 
+# houdini otl backups
+backup/
+/backup*
