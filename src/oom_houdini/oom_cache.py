@@ -26,7 +26,7 @@ def get_versions(
 
     If ``published_file_type`` is provided, restricts the search to that
     ShotGrid PublishedFileType code (e.g. ``"oom_houdini_cache"`` or
-    ``"oom_usd_publish"``). This avoids cross-type collisions when different
+    ``"oom_usd_publish_wedged"``). This avoids cross-type collisions when different
     publishes share the same code/name.
     """
     tk = hou.session.oom_tk

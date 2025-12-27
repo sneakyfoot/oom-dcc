@@ -111,11 +111,14 @@ def publish_usd_from_cache_node(work_item, cache_node_attr: str = "cache_node") 
 
     # ShotGrid handles and next version (SG-backed)
     tk, ctx, sg = _sg_handles()
-    pf_type_id = _get_pf_type_id(sg, "oom_usd_publish")
+    pf_type_id = _get_pf_type_id(sg, "oom_usd_publish_wedged")
     version = _next_version(sg, ctx, pf_type_id, cache_name)
 
     # Resolve SG and Houdini paths with concrete version
-    sg_path = filename.replace('`chs("version")`', str(version))
+    sg_path = filename.replace('`chs("version")`', str(version)).replace(
+        '`chs("wedge_index")`', "%02d"
+    )
+
     hou_path = filename.replace('`chs("version")`', str(version))
     hou_path_frames = filename_frames.replace('`chs("version")`', str(version))
     hou_path_clip = hou_path_frames.replace("$F4.usd", "")
@@ -178,9 +181,7 @@ def publish_cache_from_cache_node(
 # -----------------------------------------------------------------------------
 # Template-driven sequence publishes (renderpass/comp)
 # -----------------------------------------------------------------------------
-def _sequence_path_from_template(
-    template_name: str, name: str, version: int, frame_pad: int = 4
-) -> str:
+def _sequence_path_from_template(template_name: str, name: str, version: int) -> str:
     tk, ctx, _ = _sg_handles()
     template = tk.templates[template_name]
 
@@ -193,6 +194,7 @@ def _sequence_path_from_template(
     fields["name"] = name
     fields["frame"] = 1
     fields["version"] = 1
+    fields["wedge"] = 1
 
     raw = template.apply_fields(fields)
 
@@ -201,9 +203,12 @@ def _sequence_path_from_template(
     dirs[-1] = str(version)
     dir_expr = os.sep.join(dirs)
 
+    wedge_key = "%02d"
+    frame_key = "%04d"
+
     base, rest = fname.split(".", 1)
     ext = rest.split(".")[-1]
-    file_expr = f"{base}.%{frame_pad}d.{ext}"
+    file_expr = f"{base}.{wedge_key}.{frame_key}.{ext}"
 
     return os.path.join(dir_expr, file_expr)
 
@@ -220,12 +225,10 @@ def publish_renderpass_from_template(
     publish_name = cache_node.evalParm("name").strip()
 
     tk, ctx, sg = _sg_handles()
-    pf_type_id = _get_pf_type_id(sg, "oom_renderpass")
+    pf_type_id = _get_pf_type_id(sg, "oom_renderpass_wedged")
     version = _next_version(sg, ctx, pf_type_id, publish_name)
 
-    path = _sequence_path_from_template(
-        "oom_renderpass", publish_name, version, frame_pad=4
-    )
+    path = _sequence_path_from_template("oom_renderpass_wedged", publish_name, version)
 
     pub = _create_publish(sg, ctx, pf_type_id, publish_name, path, version)
 
@@ -246,7 +249,7 @@ def publish_comp_from_template(work_item, cache_node_attr: str = "cache_node") -
     pf_type_id = _get_pf_type_id(sg, "oom_comp")
     version = _next_version(sg, ctx, pf_type_id, publish_name)
 
-    path = _sequence_path_from_template("oom_comp", publish_name, version, frame_pad=4)
+    path = _sequence_path_from_template("oom_comp", publish_name, version)
 
     # For the TOP graph, keep some Houdini-friendly variants
     hou_path = path.replace("%4d", "$F4")
