@@ -1,6 +1,7 @@
-from oom_houdini.sg_load import browse_publish, update_to_latest as _update_to_latest
+from oom_houdini.sg_load import browse_publish
+from oom_houdini.sg_load import update_to_latest as _update_to_latest
 
-USD_PUBLISHED_TYPE = "oom_usd_publish"
+USD_PUBLISHED_TYPE = "oom_usd_publish_wedged"
 
 
 def browse_usd(kwargs: dict) -> None:

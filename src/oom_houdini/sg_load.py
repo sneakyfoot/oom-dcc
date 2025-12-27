@@ -1,7 +1,8 @@
-from PySide6 import QtWidgets, QtCore
-import hou
 import datetime
 import os
+
+import hou
+from PySide6 import QtCore, QtWidgets
 
 
 def _format_date(val):
@@ -17,6 +18,18 @@ def _format_date(val):
         except Exception:
             pass
     return str(val).split(".")[0][:16]
+
+
+def convert_path(sg_path: str, has_frames: bool) -> str:
+    parts = sg_path.split(".")
+    if has_frames:
+        idx = 3
+        parts[-2] = "$F4"
+    else:
+        idx = 2
+    parts[-idx] = '`chs("wedge_index")`'
+    hou_path = ".".join(parts)
+    return hou_path
 
 
 class VersionsDialog(QtWidgets.QDialog):
@@ -57,6 +70,7 @@ class VersionsDialog(QtWidgets.QDialog):
             return
 
         path = item.data(QtCore.Qt.UserRole)
+        path = convert_path(path, has_frames=False)
         try:
             self.node.parm("filename").set(path)
             if self.main_dialog:
@@ -370,6 +384,7 @@ class BrowseDialog(QtWidgets.QDialog):
 
         latest = publishes[0]
         path = latest["path"]["local_path"]
+        path = convert_path(path, has_frames=False)
         try:
             self.node.parm("filename").set(path)
             self.close()
@@ -511,5 +526,8 @@ def update_to_latest(target, published_file_type, is_path=False) -> None:
         return
 
     latest_path = latest[0]["path"]["local_path"]
+
+    # TODO: this if statment seems weird. Idk why its like this.
     if latest_path and latest_path != path:
+        latest_path = convert_path(latest_path, has_frames=False)
         node.parm("filename").set(latest_path)
