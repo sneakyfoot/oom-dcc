@@ -68,7 +68,7 @@ def pre_update_cache(upstream_nodes):
         try:
             fname_expr = target_node.parm("filename").unexpandedString()
             if ".usd" in fname_expr.lower():
-                pf_code = "oom_usd_publish"
+                pf_code = "oom_usd_publish_wedged"
             else:
                 pf_code = oom_cache.CACHE_PUBLISHED_TYPE_CODE
         except Exception:
