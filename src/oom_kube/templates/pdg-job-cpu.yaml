@@ -164,4 +164,5 @@ spec:
               cpu: { { cpu_request } }
               memory: { { mem_request } }
             limits:
+              cpu: { { cpu_request } }
               memory: { { mem_request } }

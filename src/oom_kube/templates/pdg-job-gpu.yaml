@@ -165,5 +165,6 @@ spec:
               memory: { { mem_request } }
               nvidia.com/gpu: { { gpu_request } }
             limits:
+              cpu: { { cpu_request } }
               memory: { { mem_request } }
               nvidia.com/gpu: { { gpu_request } }
