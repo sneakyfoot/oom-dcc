@@ -25,13 +25,26 @@ jobs:
           extra_nix_config: |
             experimental-features = nix-command flakes
             accept-flake-config = true
-      - name: Build impure uv venv
-        run: nix build --option sandbox relaxed .#oom-uv-bundle
+      - name: Configure Attic binary cache
+        run: |
+          set -euo pipefail
+          nix run nixpkgs#attic-client -- login --set-default central "$ATTIC_ENDPOINT" "$ATTIC_TOKEN"
+          nix run nixpkgs#attic-client -- use "$ATTIC_CACHE"
+      - name: Build uv bundle
+        run: |
+          nix run nixpkgs#attic-client -- watch-store "$ATTIC_CACHE" &
+          WATCH_PID=$!
+          trap 'kill $WATCH_PID 2>/dev/null || true; wait $WATCH_PID 2>/dev/null || true' EXIT
+          nix build .#oom-uv-bundle --option sandbox relaxed
       - name: Publish Houdini Container
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_ACTOR: ${{ github.actor }}
-        run: nix run .#publish-houdini-container
+        run: |
+          nix run nixpkgs#attic-client -- watch-store "$ATTIC_CACHE" &
+          WATCH_PID=$!
+          trap 'kill $WATCH_PID 2>/dev/null || true; wait $WATCH_PID 2>/dev/null || true' EXIT
+          nix run .#publish-houdini-container
       - name: Tag repo as latest
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
