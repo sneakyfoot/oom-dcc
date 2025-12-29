@@ -3,7 +3,8 @@
 
   inputs.nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
 
-  outputs = { self, nixpkgs }:
+  outputs =
+    { self, nixpkgs }:
     let
       system = "x86_64-linux";
       pkgs = import nixpkgs {
@@ -21,16 +22,19 @@
       uvBundle = uvBundleNix.uvBundle;
       uvToolchain = uvBundleNix.toolchain;
 
-      shaTag =
-        self.shortRev
-        or self.dirtyShortRev;
+      shaTag = self.shortRev or self.dirtyShortRev;
 
       runtime = import ./nix/runtime.nix {
         inherit pkgs uvBundle src;
       };
 
       houdini = import ./nix/houdini.nix {
-        inherit pkgs uvBundle src shaTag;
+        inherit
+          pkgs
+          uvBundle
+          src
+          shaTag
+          ;
         runtimePkgs = runtime.runtimePkgs;
         runtimeProfile = runtime.runtimeProfile;
       };
@@ -50,10 +54,7 @@
           UV_PROJECT_ENVIRONMENT = ".venv";
         };
 
-        shellHook = ''
-          source ./.venv/bin/activate
-          zsh
-        '';
+        shellHook = '''';
       };
 
       packages.${system} = {
