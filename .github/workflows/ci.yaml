@@ -26,8 +26,18 @@ jobs:
             experimental-features = nix-command flakes
             accept-flake-config = true
 
+      - name: Configure Attic binary cache
+        run: |
+          set -euo pipefail
+          nix run github:zhaofengli/attic#attic -- login --set-default central "$ATTIC_ENDPOINT" "$ATTIC_TOKEN"
+          nix run github:zhaofengli/attic#attic -- use "$ATTIC_CACHE"
+
       - name: Build uv bundle
-        run: nix build .#oom-uv-bundle --option sandbox relaxed
+        run: |
+          nix run github:zhaofengli/attic#attic -- watch-store "$ATTIC_CACHE" &
+          WATCH_PID=$!
+          trap 'kill $WATCH_PID 2>/dev/null || true; wait $WATCH_PID 2>/dev/null || true' EXIT
+          nix build .#oom-uv-bundle --option sandbox relaxed
       - name: Ruff
         run: nix develop .#default --command uv run ruff check src 
       - name: Ty
