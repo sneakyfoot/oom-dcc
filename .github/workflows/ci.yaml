@@ -29,12 +29,12 @@ jobs:
       - name: Configure Attic binary cache
         run: |
           set -euo pipefail
-          nix run nixpkgs#attic -- login --set-default central "$ATTIC_ENDPOINT" "$ATTIC_TOKEN"
-          nix run nixpkgs#attic -- use "$ATTIC_CACHE"
+          nix run nixpkgs#attic-client -- login --set-default central "$ATTIC_ENDPOINT" "$ATTIC_TOKEN"
+          nix run nixpkgs#attic-client -- use "$ATTIC_CACHE"
 
       - name: Build uv bundle
         run: |
-          nix run nixpkgs#attic -- watch-store "$ATTIC_CACHE" &
+          nix run nixpkgs#attic-client -- watch-store "$ATTIC_CACHE" &
           WATCH_PID=$!
           trap 'kill $WATCH_PID 2>/dev/null || true; wait $WATCH_PID 2>/dev/null || true' EXIT
           nix build .#oom-uv-bundle --option sandbox relaxed
