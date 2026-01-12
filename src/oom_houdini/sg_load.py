@@ -36,12 +36,19 @@ class VersionsDialog(QtWidgets.QDialog):
     """Dialog to select a specific published file version."""
 
     def __init__(
-        self, publishes, node, main_dialog=None, parent=None, title="Select Version"
+        self,
+        publishes,
+        node,
+        main_dialog=None,
+        parent=None,
+        title="Select Version",
+        frames=False,
     ):
         super(VersionsDialog, self).__init__(parent)
 
         self.node = node
         self.main_dialog = main_dialog
+        self.frames = frames
 
         self.setWindowTitle(title)
         self.setMinimumWidth(400)
@@ -70,7 +77,7 @@ class VersionsDialog(QtWidgets.QDialog):
             return
 
         path = item.data(QtCore.Qt.UserRole)
-        path = convert_path(path, has_frames=False)
+        path = convert_path(path, has_frames=self.frames)
         try:
             self.node.parm("filename").set(path)
             if self.main_dialog:
@@ -88,11 +95,12 @@ class BrowseDialog(QtWidgets.QDialog):
     Supports a single PublishedFileType code (str) or multiple (list[str]).
     """
 
-    def __init__(self, node, published_file_type, parent=None):
+    def __init__(self, node, published_file_type, parent=None, frames=False):
         super(BrowseDialog, self).__init__(parent)
 
         self.node = node
         self.published_file_type = published_file_type
+        self.frames = frames
 
         # Title reflects single or multiple types
         if isinstance(published_file_type, (list, tuple)):
@@ -384,7 +392,7 @@ class BrowseDialog(QtWidgets.QDialog):
 
         latest = publishes[0]
         path = latest["path"]["local_path"]
-        path = convert_path(path, has_frames=False)
+        path = convert_path(path, has_frames=self.frames)
         try:
             self.node.parm("filename").set(path)
             self.close()
@@ -419,23 +427,24 @@ class BrowseDialog(QtWidgets.QDialog):
             main_dialog=self,
             parent=self,
             title=f"Select {t} Version",
+            frames=self.frames,
         )
         dlg.setParent(hou.ui.mainQtWindow(), QtCore.Qt.Window)
         dlg.exec()
 
 
-def browse_publish(kwargs: dict, published_file_type) -> None:
+def browse_publish(kwargs: dict, published_file_type, frames=False) -> None:
     """Callback for the Browse button on a loader HDA.
 
     ``published_file_type`` may be a str code or a list of codes.
     """
     node = kwargs.get("node")
-    dlg = BrowseDialog(node, published_file_type)
+    dlg = BrowseDialog(node, published_file_type, frames=frames)
     dlg.setParent(hou.ui.mainQtWindow(), QtCore.Qt.Window)
     dlg.show()
 
 
-def update_to_latest(target, published_file_type, is_path=False) -> None:
+def update_to_latest(target, published_file_type, is_path=False, frames=False) -> None:
     """Update the node to the latest publish when ``force_latest`` is on.
 
     ``published_file_type`` may be a str code or a list of codes.
@@ -529,5 +538,5 @@ def update_to_latest(target, published_file_type, is_path=False) -> None:
 
     # TODO: this if statment seems weird. Idk why its like this.
     if latest_path and latest_path != path:
-        latest_path = convert_path(latest_path, has_frames=False)
+        latest_path = convert_path(latest_path, has_frames=frames)
         node.parm("filename").set(latest_path)
