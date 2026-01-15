@@ -36,15 +36,15 @@ def context_from_path(path, tk, engine, sg=None):
 
         # fall back to PublishedFile lookup by name and version if path filter fails
         fields = tk.templates["oom_hip_file"].get_fields(path)
-        pub = sg.find_one(
-            "PublishedFile",
-            [
-                ["project", "is", context.project],
-                ["code", "is", fields.get("name")],
-                ["version_number", "is", fields.get("version")],
-            ],
-            ["task", "task.Task.step"],
-        )
+        filters = [
+            ["project", "is", context.project],
+            ["code", "is", fields.get("name")],
+            ["version_number", "is", fields.get("version")],
+        ]
+        if context.entity:
+            filters.append(["entity", "is", context.entity])
+
+        pub = sg.find_one("PublishedFile", filters, ["task", "task.Task.step"])
         if pub:
             task = pub.get("task")
             step = pub.get("task.Task.step")
