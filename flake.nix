@@ -24,6 +24,10 @@
 
       shaTag = self.shortRev or self.dirtyShortRev;
 
+      ocio = {
+        configPath = "/mnt/RAID/ocio/config.ocio";
+      };
+
       runtime = import ./nix/runtime.nix {
         inherit pkgs uvBundle src;
       };
@@ -37,6 +41,7 @@
           ;
         runtimePkgs = runtime.runtimePkgs;
         runtimeProfile = runtime.runtimeProfile;
+        ocioConfigPath = ocio.configPath;
       };
 
       cli = import ./nix/cli.nix {
@@ -52,6 +57,7 @@
         env = {
           UV_MANAGED_PYTHON = "1";
           UV_PROJECT_ENVIRONMENT = ".venv";
+          OCIO = ocio.configPath;
         };
 
         shellHook = '''';

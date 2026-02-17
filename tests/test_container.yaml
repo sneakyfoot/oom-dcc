@@ -75,8 +75,6 @@ spec:
               value: "1"
             - name: NODE_DEV
               value: /opt/node_dev
-            - name: OCIO
-              value: /mnt/RAID/Assets/studio-config-v2.2.0_aces-v1.3_ocio-v2.3.ocio
 
           securityContext:
             runAsUser: 1000
