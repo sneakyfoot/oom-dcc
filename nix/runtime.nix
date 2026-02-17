@@ -1,18 +1,15 @@
 {
   pkgs,
-  uvBundle,
+  python,
+  pythonEnv,
   src,
 }:
 
 let
   cuda = pkgs.cudaPackages_12_8;
-  uvPython = "${uvBundle}/python/bin/python";
-  defaultUvProjectEnv = "${uvBundle}/venv";
-  uvSitePkgs = "${defaultUvProjectEnv}/lib/python3.11/site-packages";
+  pythonSitePkgs = "${pythonEnv}/${python.sitePackages}";
 in
 rec {
-  inherit uvPython;
-
   runtimePkgs = (
     _pkgs: with _pkgs; [
       stdenv.cc.cc.lib
@@ -91,7 +88,7 @@ rec {
       gnugrep
       which
       procps
-      uvBundle
+      pythonEnv
     ]
   );
 
@@ -107,20 +104,8 @@ rec {
     #   /tmp/opencl/vendors/ 2>/dev/null || true
 
     export OOM_CORE=${src}
-
-    if [ -z "''${UV_PROJECT_ENVIRONMENT:-}" ]; then
-      UV_PROJECT_ENVIRONMENT="${defaultUvProjectEnv}"
-    fi
-    if [ -z "''${UV_CACHE_DIR:-}" ]; then
-      UV_CACHE_DIR="$HOME/.cache/uv/cache"
-    fi
-
-    export UV_PYTHON=${uvPython}
-    export UV_PROJECT_ENVIRONMENT
-    export UV_CACHE_DIR
-
-    export PYTHONPATH="''${UV_PROJECT_ENVIRONMENT}/lib/python3.11/site-packages:$PYTHONPATH"
-    export SGTK_PATH=${uvSitePkgs}
+    export PYTHONPATH="${pythonSitePkgs}:${src}/src:$PYTHONPATH"
+    export SGTK_PATH=${pythonSitePkgs}
 
   '';
   dcc-runtime = pkgs.buildFHSEnv {
