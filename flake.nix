@@ -25,7 +25,7 @@
       shaTag = self.shortRev or self.dirtyShortRev;
 
       ocio = {
-        configPath = "/mnt/RAID/ocio/config.ocio";
+        configPath = "/mnt/RAID/Assets/studio-config-all-views-v3.0.0_aces-v2.0_ocio-v2.4.ocio";
       };
 
       runtime = import ./nix/runtime.nix {
@@ -60,7 +60,7 @@
           OCIO = ocio.configPath;
         };
 
-        shellHook = '''';
+        shellHook = "";
       };
 
       packages.${system} = {
