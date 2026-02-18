@@ -7,6 +7,7 @@
 , uvBundle
 , src
 , shaTag
+, ocioConfigPath
 }:
 
 let
@@ -31,6 +32,7 @@ let
     export HOUDINI_PACKAGE_DIR=${packageDir}
     export OOM_TAG=${shaTag}
     export PYTHONPATH=${uvProjectEnv}/lib/python3.11/site-packages:$PYTHONPATH
+    export OCIO=${ocioConfigPath}
   '';
 
   houdiniHostProfile = mkHoudiniProfile {
@@ -196,6 +198,7 @@ let
           "PDG_HYTHON=${houdiniHostRoot}/bin/hython"
           "PDG_PYTHON=${houdiniHostRoot}/python/bin/python"
           "HOUDINI_PACKAGE_DIR=${packageDir}"
+          "OCIO=${ocioConfigPath}"
           "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
           "NIX_SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
           "REQUESTS_CA_BUNDLE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
