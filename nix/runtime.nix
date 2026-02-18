@@ -106,6 +106,7 @@ rec {
 
     export OOM_CORE=${src}
 
+    export OOM_PYTHONPATH=${pythonPath}
     export PYTHONPATH="${pythonPath}:$PYTHONPATH"
     export OOM_PYTHON=${pythonBin}
 

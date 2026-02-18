@@ -33,6 +33,7 @@ let
       export PDG_PYTHON="$HFS/python/bin/python"
       export HOUDINI_PACKAGE_DIR=${packageDir}
       export OOM_TAG=${shaTag}
+      export OOM_PYTHONPATH=${pythonPath}
       export PYTHONPATH=${pythonPath}:$PYTHONPATH
       export OOM_PYTHON=${pythonBin}
       export OCIO=${ocioConfigPath}
@@ -200,10 +201,11 @@ let
         "HOUDINI_OCL_DEVICETYPE=GPU"
         "HOUDINI_OCL_VENDOR="
         "OOM_CORE=${src}"
-          "OOM=${src}"
-          "OOM_TAG=${shaTag}"
-          "PYTHONPATH=${pythonPath}"
-          "OOM_PYTHON=${pythonBin}"
+        "OOM=${src}"
+        "OOM_TAG=${shaTag}"
+        "OOM_PYTHONPATH=${pythonPath}"
+        "PYTHONPATH=${pythonPath}"
+        "OOM_PYTHON=${pythonBin}"
         "HFS=${houdiniHostRoot}"
         "HHP=${houdiniHostRoot}/houdini/python3.11libs"
         "PDG_HYTHON=${houdiniHostRoot}/bin/hython"

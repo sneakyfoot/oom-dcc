@@ -14,7 +14,7 @@ let
     text = ''
             set -euo pipefail
             echo "[oom] Setting up environment"
-            export PYTHONPATH="${pythonPath}:$PYTHONPATH"
+            export PYTHONPATH="${pythonPath}:''${PYTHONPATH:-}"
             ${pythonEnv}/bin/python - "$@" <<'PY'
       from oom_context import main
 

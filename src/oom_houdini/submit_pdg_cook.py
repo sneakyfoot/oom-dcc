@@ -173,6 +173,7 @@ def build_controller_cmd(hip: Path, node: str, *, hfs: str, hip_dir: str) -> str
     parts = [
         "set -euo pipefail",
         "umask 000",
+        'if [ -n "${OOM_PYTHONPATH:-}" ]; then export PYTHONPATH="${OOM_PYTHONPATH}${PYTHONPATH:+:${PYTHONPATH}}"; fi',
         f"export HIP={shlex.quote(hip_dir)}",
         f"export HFS={shlex.quote(hfs)}",
         f"{shlex.quote(str(hython))} -c {shlex.quote(snippet)}",

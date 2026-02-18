@@ -40,7 +40,7 @@ let
 
   pythonSitePkgs = "${pythonEnv}/${python.sitePackages}";
 
-  pythonPath = pkgs.lib.makeSearchPath "PYTHONPATH" [
+  pythonPath = pkgs.lib.concatStringsSep ":" [
     "${src}/src"
     pythonSitePkgs
   ];
