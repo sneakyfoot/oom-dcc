@@ -6,4 +6,4 @@ There's python code for sgtk integration, and there is a custom houdini pdg sche
 
 The kubernetes cluster I use is self hosted and managed by me.
 
-Use ruff, ty, and uv (astrals awesome python toolchain) as well as nix tools to format and check code.
+Use ruff and ty as well as nix tools to format and check code.

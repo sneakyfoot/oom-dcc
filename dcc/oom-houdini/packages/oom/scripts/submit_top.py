@@ -20,15 +20,18 @@ def _pick_python_bin():
     """Pick facility python using env var or standard PVC mount, else current."""
 
     candidates = [
+        os.environ.get("OOM_PYTHON"),
         os.environ.get("OOM_VENV"),
-        os.environ.get("UV_PROJECT_ENVIRONMENT"),
-        "/var/uv/venvs/oom-dcc",
     ]
 
     for base in candidates:
         if not base:
             continue
         base = base.strip()
+        if base.endswith("/bin/python"):
+            if os.path.exists(base):
+                return base
+            continue
         candidate = os.path.join(base, "bin", "python")
         if os.path.exists(candidate):
             return candidate
