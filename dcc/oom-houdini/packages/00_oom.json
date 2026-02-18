@@ -5,16 +5,7 @@
 	"path": "$HOUDINI_PACKAGE_PATH/oom",
 	"env": [
 		{
-			"UV_PROJECT_ENVIRONMENT": "$UV_PROJECT_ENVIRONMENT"
-		},
-		{
 			"OOM_HOUDINI": "$OOM/dcc/oom-houdini/packages/oom"
-		},
-		{
-			"PYTHONPATH": {
-				"method": "append",
-				"value": "$UV_PROJECT_ENVIRONMENT/lib/python3.11/site-packages"
-			}
 		},
 		{
 			"PYTHONPATH": {
@@ -26,12 +17,6 @@
 			"PYTHONPATH": {
 				"method": "append",
 				"value": "$OOM/oom-core"
-			}
-		},
-		{
-			"PYTHONPATH": {
-				"method": "append",
-				"value": "$SGTK_PATH"
 			}
 		},
 		{

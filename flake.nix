@@ -14,13 +14,12 @@
       };
 
       src = pkgs.lib.cleanSource ./.;
-      uvBundleNix = import ./nix/uv-bundle.nix {
+      pythonEnvNix = import ./nix/python-env.nix {
         inherit pkgs src;
-        pythonSpec = "3.11";
-        appName = "oom-dcc";
       };
-      uvBundle = uvBundleNix.uvBundle;
-      uvToolchain = uvBundleNix.toolchain;
+      pythonEnv = pythonEnvNix.pythonEnv;
+      pythonPath = pythonEnvNix.pythonPath;
+      pythonToolchain = pythonEnvNix.toolchain;
 
       shaTag = self.shortRev or self.dirtyShortRev;
 
@@ -29,13 +28,19 @@
       };
 
       runtime = import ./nix/runtime.nix {
-        inherit pkgs uvBundle src;
+        inherit
+          pkgs
+          pythonEnv
+          pythonPath
+          src
+          ;
       };
 
       houdini = import ./nix/houdini.nix {
         inherit
           pkgs
-          uvBundle
+          pythonEnv
+          pythonPath
           src
           shaTag
           ;
@@ -45,18 +50,42 @@
       };
 
       cli = import ./nix/cli.nix {
-        inherit pkgs uvBundle src;
+        inherit
+          pkgs
+          pythonEnv
+          pythonPath
+          src
+          ;
       };
     in
     {
+      checks.${system} = {
+        oom-python-env = pythonEnv;
+        ruff = pkgs.runCommand "oom-ruff" { nativeBuildInputs = [ pkgs.ruff ]; } ''
+          cd ${src}
+          export XDG_CACHE_HOME="$TMPDIR"
+          export RUFF_CACHE_DIR="$TMPDIR/ruff-cache"
+          export PYTHONPATH=${pythonPath}
+          ruff check src
+          touch $out
+        '';
+        ty = pkgs.runCommand "oom-ty" { nativeBuildInputs = [ pkgs.ty pythonEnv ]; } ''
+          cd ${src}
+          export XDG_CACHE_HOME="$TMPDIR"
+          export TY_CACHE_DIR="$TMPDIR/ty-cache"
+          export PYTHONPATH=${pythonPath}
+          ty check src
+          touch $out
+        '';
+      };
+
       devShells.${system}.default = pkgs.mkShell {
 
         name = "oom-dcc-dev";
-        packages = uvToolchain;
+        packages = pythonToolchain;
 
         env = {
-          UV_MANAGED_PYTHON = "1";
-          UV_PROJECT_ENVIRONMENT = ".venv";
+          PYTHONPATH = pythonPath;
           OCIO = ocio.configPath;
         };
 
@@ -64,7 +93,7 @@
       };
 
       packages.${system} = {
-        oom-uv-bundle = uvBundle;
+        oom-python-env = pythonEnv;
         dcc-runtime = runtime.dcc-runtime;
         houdini-fhs = houdini.houdiniFhsEnv;
         houdini = houdini.houdiniWrapper;
