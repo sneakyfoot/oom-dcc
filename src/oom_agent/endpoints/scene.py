@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 import time
+from pathlib import Path
 from typing import Any, Dict
 
 from fastapi import HTTPException
@@ -109,4 +110,54 @@ async def scene_get_current(params: Dict[str, Any]) -> Dict[str, Any]:
         "hip_loaded": state.hip_loaded,
         "hip_path": state.hip_path,
         "project_path": state.paths.get("project_path"),
+    }
+
+
+@register_method("scene.list")
+async def scene_list(params: Dict[str, Any]) -> Dict[str, Any]:
+    if not pre_check_runtime():
+        raise HTTPException(status_code=404, detail="No active session")
+
+    manager = get_session_manager()
+    state = manager.state
+    shot_path = state.paths.get("shot_path")
+    if not shot_path:
+        raise HTTPException(
+            status_code=400,
+            detail="No shot context active; create session with project+sequence+shot",
+        )
+
+    shot_root = Path(shot_path)
+    tasks_root = shot_root / "tasks"
+    if not tasks_root.exists():
+        return {
+            "shot_path": str(shot_root),
+            "tasks_path": str(tasks_root),
+            "count": 0,
+            "scenes": [],
+        }
+
+    scene_files: list[dict[str, Any]] = []
+    for extension in ("*.hip", "*.hiplc", "*.hipnc"):
+        for hip_file in tasks_root.glob(f"*/houdini/{extension}"):
+            if not hip_file.is_file():
+                continue
+
+            stat = hip_file.stat()
+            scene_files.append(
+                {
+                    "path": str(hip_file),
+                    "name": hip_file.name,
+                    "step": hip_file.parent.parent.name,
+                    "size_bytes": stat.st_size,
+                    "modified_ts": stat.st_mtime,
+                }
+            )
+
+    scene_files.sort(key=lambda item: float(item["modified_ts"]), reverse=True)
+    return {
+        "shot_path": str(shot_root),
+        "tasks_path": str(tasks_root),
+        "count": len(scene_files),
+        "scenes": scene_files,
     }
