@@ -57,6 +57,15 @@
           src
           ;
       };
+
+      agent_server = import ./nix/server.nix {
+        inherit
+          pkgs
+          pythonEnv
+          pythonPath
+          src
+          ;
+      };
     in
     {
       checks.${system} = {
@@ -69,14 +78,22 @@
           ruff check src
           touch $out
         '';
-        ty = pkgs.runCommand "oom-ty" { nativeBuildInputs = [ pkgs.ty pythonEnv ]; } ''
-          cd ${src}
-          export XDG_CACHE_HOME="$TMPDIR"
-          export TY_CACHE_DIR="$TMPDIR/ty-cache"
-          export PYTHONPATH=${pythonPath}
-          ty check src
-          touch $out
-        '';
+        ty =
+          pkgs.runCommand "oom-ty"
+            {
+              nativeBuildInputs = [
+                pkgs.ty
+                pythonEnv
+              ];
+            }
+            ''
+              cd ${src}
+              export XDG_CACHE_HOME="$TMPDIR"
+              export TY_CACHE_DIR="$TMPDIR/ty-cache"
+              export PYTHONPATH=${pythonPath}
+              ty check src
+              touch $out
+            '';
       };
 
       devShells.${system}.default = pkgs.mkShell {
@@ -101,6 +118,7 @@
         publish-houdini-container = houdini.publishHoudiniContainer;
         mplay = houdini.mplayWrapper;
         oom = cli.oom;
+        agent-server = agent_server.agentServer;
       };
     };
 }
