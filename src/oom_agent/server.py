@@ -3,7 +3,8 @@ Server initialization and FastAPI app setup.
 """
 
 import os
-import json
+from typing import Any
+
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -25,8 +26,9 @@ def create_app() -> FastAPI:
     app = FastAPI(title="OOM Agent Control Server", version="0.1.0")
 
     # Add CORS middleware
+    middleware_cls: Any = CORSMiddleware
     app.add_middleware(
-        CORSMiddleware,
+        middleware_cls,  # type: ignore[arg-type]
         allow_origins=["*"],
         allow_credentials=True,
         allow_methods=["*"],
@@ -40,10 +42,10 @@ def create_app() -> FastAPI:
 app = create_app()
 
 # Import endpoints to register methods
-import oom_agent.endpoints.session
-import oom_agent.endpoints.scene
-import oom_agent.endpoints.execution
-import oom_agent.endpoints.tools
+import oom_agent.endpoints.session  # noqa: E402,F401
+import oom_agent.endpoints.scene  # noqa: E402,F401
+import oom_agent.endpoints.execution  # noqa: E402,F401
+import oom_agent.endpoints.tools  # noqa: E402,F401
 
 
 @app.get("/health")
@@ -63,7 +65,7 @@ async def handle_rpc(request: Request):
     """Handle JSON-RPC request."""
     try:
         # Parse request body
-        request_str = (await request.body()).decode('utf-8')
+        request_str = (await request.body()).decode("utf-8")
 
         # Parse request
         parsed = parse_request(request_str)

@@ -1,121 +1,166 @@
 """
-OomContext integration for Houdini session bootstrap.
-Extracts and wraps context resolution logic.
+Oom context bootstrap helpers for agent runtime initialization.
 """
 
+from __future__ import annotations
+
 import os
-from typing import Optional, Dict, Any
+import socket
+from typing import Any, Optional
+
+import oom_sg_auth
+import sgtk
+from oom_bootstrap import bootstrap
 
 
-def extract_context_paths(
-    project: str, sequence: Optional[str] = None, shot: Optional[str] = None
-) -> Dict[str, str]:
-    """
-    Extract project/sequence/shot paths based on oom context logic.
-    
-    This is a simplified version that sets environment variables for the session.
-    The full ShotGrid/SGTK bootstrap logic can be added later.
-    
-    Args:
-        project: Project name
-        sequence: Optional sequence name
-        shot: Optional shot name
-    
-    Returns:
-        Dictionary of resolved paths
-    """
-    # Base paths - adjust for your actual project structure
-    base_path = os.environ.get("OOM_BASE_PATH", "/mnt/RAID/Assets")
-    
-    result = {
-        "project": project,
-        "project_path": f"{base_path}/{project}",
-    }
-    
-    if sequence:
-        result["sequence"] = sequence
-        result["sequence_path"] = f"{base_path}/{project}/sequences/{sequence}"
-    
+def _configure_environment() -> None:
+    hostname = socket.gethostname()
+    os.environ["SHOTGUN_HOME"] = os.path.expanduser(f"~/.shotgun-{hostname}")
+    ssl_cert = (
+        os.environ.get("SSL_CERT_FILE")
+        or os.environ.get("OOM_SSL_CERT_FILE")
+        or "/mnt/RAID/Assets/shotgun/certs/cacert.pem"
+    )
+    os.environ["SSL_CERT_FILE"] = ssl_cert
+
+
+def _resolve_project_path(
+    tk_instance: Any, project_entity: dict[str, Any]
+) -> Optional[str]:
+    tank_name = (project_entity.get("tank_name") or "").strip()
+    if not tank_name:
+        return None
+
+    data_roots = tk_instance.pipeline_configuration.get_data_roots() or {}
+    for root_path in data_roots.values():
+        if not root_path:
+            continue
+
+        normalized = os.path.normpath(root_path)
+        if os.path.basename(normalized) == tank_name:
+            return normalized
+
+        candidate = os.path.join(normalized, tank_name)
+        if os.path.isdir(candidate):
+            return candidate
+        return candidate
+
+    return None
+
+
+def bootstrap_context(
+    project_name: str,
+    sequence_name: Optional[str] = None,
+    shot_name: Optional[str] = None,
+) -> dict[str, Any]:
+    """Resolve SG/TK context and return runtime environment metadata."""
+    _configure_environment()
+
+    user = oom_sg_auth.oom_auth()
+    sg = user.create_sg_connection()
+
+    project = sg.find_one(
+        "Project", [["name", "is", project_name]], ["id", "tank_name"]
+    )
+    if project is None:
+        raise ValueError(f"Project not found: {project_name}")
+
+    engine = sgtk.platform.current_engine()
+    if engine is not None:
+        tk = engine.sgtk
+        sg = tk.shotgun
+    else:
+        try:
+            engine, tk, sg = bootstrap(project)
+        except Exception as exc:
+            if "already running" not in str(exc).lower():
+                raise
+            engine = sgtk.platform.current_engine()
+            if engine is None:
+                raise
+            tk = engine.sgtk
+            sg = tk.shotgun
+
+    sequence = None
+    if sequence_name:
+        sequence = sg.find_one(
+            "Sequence",
+            [["project", "is", project], ["code", "is", sequence_name]],
+            ["id", "code"],
+        )
+        if sequence is None:
+            raise ValueError(f"Sequence not found: {sequence_name}")
+
+    shot = None
+    if shot_name:
+        if sequence is None:
+            raise ValueError("Sequence is required when specifying shot")
+
+        shot = sg.find_one(
+            "Shot",
+            [
+                ["project", "is", project],
+                ["sg_sequence", "is", sequence],
+                ["code", "is", shot_name],
+            ],
+            ["id", "code", "sg_cut_in", "sg_cut_out"],
+        )
+        if shot is None:
+            raise ValueError(f"Shot not found: {shot_name}")
+
     if shot:
-        result["shot"] = shot
-        result["shot_path"] = f"{base_path}/{project}/shots/{shot}"
-        result["hip_directory"] = f"{base_path}/{project}/shots/{shot}/HIPs"
-    
-    return result
+        context = tk.context_from_entity("Shot", shot["id"])
+    else:
+        context = tk.context_from_entity("Project", project["id"])
+    engine.change_context(context)
 
+    tk.synchronize_filesystem_structure()
+    if shot:
+        tk.create_filesystem_structure("Shot", shot["id"])
+    else:
+        tk.create_filesystem_structure("Project", project["id"])
 
-def set_session_environment(
-    session_id: str, paths: Dict[str, str]
-) -> Dict[str, str]:
-    """
-    Set environment variables for a session.
-    
-    Args:
-        session_id: Session identifier
-        paths: Resolved paths from extract_context_paths
-    
-    Returns:
-        Dictionary of set environment variables
-    """
-    env_vars = {}
-    
-    # Build session-specific environment
-    session_root = f"/tmp/{session_id}"
-    
-    for key, value in paths.items():
-        if value:
-            env_name = f"OOM_SESSION_{session_id.upper()}_{key.upper()}"
-            os.environ[env_name] = value
-            env_vars[env_name] = value
-    
-    # Set standard OOM variables
-    os.environ["OOM_SESSION_ROOT"] = session_root
-    
-    # Add to common vars if in scope
-    if "project_path" in paths:
-        os.environ["OOM_PROJECT_PATH"] = paths["project_path"]
-        env_vars["OOM_PROJECT_PATH"] = paths["project_path"]
-    
-    if "sequence_path" in paths:
-        os.environ["OOM_SEQUENCE_PATH"] = paths["sequence_path"]
-        env_vars["OOM_SEQUENCE_PATH"] = paths["sequence_path"]
-    
-    if "shot_path" in paths:
-        os.environ["OOM_SHOT_PATH"] = paths["shot_path"]
-        env_vars["OOM_SHOT_PATH"] = paths["shot_path"]
-    
-    return env_vars
+    project_path = _resolve_project_path(tk, project)
+    shot_path = None
+    if shot:
+        template = tk.templates.get("shot_dir")
+        if template:
+            shot_path = template.apply_fields(
+                {
+                    "Project": project_name,
+                    "Sequence": sequence_name,
+                    "Shot": shot_name,
+                }
+            )
 
+    paths: dict[str, str] = {"project_path": project_path or ""}
+    if shot_path:
+        paths["shot_path"] = shot_path
 
-def bootstrap_session(
-    session_id: str, project: str, sequence: Optional[str], shot: Optional[str]
-) -> Dict[str, Any]:
-    """
-    Full session bootstrap combining path extraction and environment setup.
-    
-    Args:
-        session_id: Session identifier
-        project: Project name
-        sequence: Sequence name (optional)
-        shot: Shot name (optional)
-    
-    Returns:
-        Dictionary with paths, env_vars, and project metadata
-    """
-    # Extract paths
-    paths = extract_context_paths(project, sequence, shot)
-    
-    # Set environment
-    env_vars = set_session_environment(session_id, paths)
-    
-    # Build result
-    result = {
-        "session_id": session_id,
-        "project": paths.get("project"),
-        "sequence": paths.get("sequence"),
-        "shot": paths.get("shot"),
-        "paths": paths,
-        "env_vars": env_vars,
+    env_vars: dict[str, str] = {
+        "OOM_PROJECT_ID": str(project["id"]),
+        "OOM_PROJECT_PATH": project_path or "",
     }
-    
-    return result
+    if sequence:
+        env_vars["OOM_SEQUENCE_ID"] = str(sequence["id"])
+    if shot:
+        env_vars["OOM_SHOT_ID"] = str(shot["id"])
+        if shot_path:
+            env_vars["OOM_SHOT_PATH"] = shot_path
+        cut_in = shot.get("sg_cut_in")
+        cut_out = shot.get("sg_cut_out")
+        if cut_in is not None and cut_out is not None:
+            env_vars["CUT_IN"] = str(cut_in)
+            env_vars["CUT_OUT"] = str(cut_out)
+
+    for key, value in env_vars.items():
+        if value:
+            os.environ[key] = value
+
+    return {
+        "project": project_name,
+        "sequence": sequence_name,
+        "shot": shot_name,
+        "paths": {k: v for k, v in paths.items() if v},
+        "env_vars": {k: v for k, v in env_vars.items() if v},
+    }

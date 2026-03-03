@@ -4,7 +4,6 @@ Pre and post checks, validation, and logging.
 """
 
 import logging
-from pathlib import Path
 from typing import Any, Dict, Optional, List
 import hashlib
 
@@ -27,11 +26,11 @@ def validate_path(path: str, allowed_types: List[str]) -> bool:
     """Validate that path is under allowed prefixes and has valid extension."""
     if not path:
         return True  # Allow empty/None paths (optional)
-    
+
     # Check prefix
     if not any(path.startswith(prefix) for prefix in ALLOWED_PATH_PREFIXES):
         return False
-    
+
     # Check extension
     path_lower = path.lower()
     for ext_type in allowed_types:
@@ -39,7 +38,7 @@ def validate_path(path: str, allowed_types: List[str]) -> bool:
             if path_lower.endswith(ext):
                 return True
         # If no type specified, skip extension check
-    
+
     return True
 
 
@@ -47,7 +46,7 @@ def validate_code(code: Optional[str]) -> bool:
     """Validate code execution parameters."""
     if not code:
         return False
-    
+
     # Check for obvious security issues
     dangerous_patterns = [
         "os.system",
@@ -58,12 +57,12 @@ def validate_code(code: Optional[str]) -> bool:
         "eval(",
         "exec(",
     ]
-    
+
     code_lower = code.lower()
     for pattern in dangerous_patterns:
         if pattern in code_lower:
             return False
-    
+
     return True
 
 
@@ -91,7 +90,7 @@ def log_operation(
         (),
         None,
     )
-    
+
     # Add custom fields
     log_record.session_id = session_id
     log_record.method = method
@@ -99,24 +98,24 @@ def log_operation(
     log_record.status = status
     log_record.duration_ms = duration_ms
     log_record.result = result
-    
+
     logger.handle(log_record)
 
 
-def pre_check_session(session_id: str) -> bool:
-    """Pre-check: verify session exists."""
+def pre_check_runtime() -> bool:
+    """Pre-check: verify runtime session is initialized."""
     from oom_agent.session_manager import get_session_manager
-    
+
     manager = get_session_manager()
-    exists = manager.exists(session_id)
-    
-    if not exists:
-        logger.warning(f"Session {session_id} not found")
-    
-    return exists
+    initialized = manager.is_initialized()
+
+    if not initialized:
+        logger.warning("Runtime session not initialized")
+
+    return initialized
 
 
-def pre_check_scene_path(session_id: str, hip_path: str) -> bool:
+def pre_check_scene_path(hip_path: str) -> bool:
     """Pre-check: validate scene path."""
     if not validate_path(hip_path, allowed_types=["scene"]):
         logger.error(f"Invalid scene path: {hip_path}")
@@ -132,11 +131,11 @@ def pre_check_code(code: str) -> bool:
     return True
 
 
-def post_check_versioning(session_id: str, hip_path: str) -> None:
+def post_check_versioning(hip_path: str) -> None:
     """Post-check: suggest versioning after scene save."""
     # This would integrate with oom_cache to check if versions are managed
     # Placeholder for future implementation
-    logger.info(f"Post-save check for session {session_id}")
+    logger.info("Post-save check completed")
 
 
 def log_success(session_id: str, method: str, duration_ms: int) -> None:

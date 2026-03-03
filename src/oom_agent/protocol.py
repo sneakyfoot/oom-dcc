@@ -5,7 +5,7 @@ Handles request parsing, response formatting, and error codes.
 
 import json
 from typing import Any, Dict, Optional, Callable, Awaitable
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class JsonRequest(BaseModel):
@@ -62,14 +62,20 @@ def create_response(
     if error_code is not None:
         error = {"code": error_code, "message": error_message or "Error"}
 
-    return JsonResponse(model_validate({"result": result, "error": error, "id": request_id}))
+    return JsonResponse.model_validate(
+        {"result": result, "error": error, "id": request_id}
+    )
 
 
 def create_error_jsonrpc(
     code: int, message: str, request_id: Optional[int | str] = None
 ) -> Dict[str, Any]:
     """Create error response dict for raw JSON."""
-    return {"jsonrpc": "2.0", "error": {"code": code, "message": message}, "id": request_id}
+    return {
+        "jsonrpc": "2.0",
+        "error": {"code": code, "message": message},
+        "id": request_id,
+    }
 
 
 def create_success_jsonrpc(
@@ -83,11 +89,15 @@ def create_success_jsonrpc(
 METHOD_REGISTRY: Dict[str, Callable[..., Awaitable[Any]]] = {}
 
 
-def register_method(method_name: str) -> Callable[[Callable[..., Awaitable[Any]]], Callable[..., Awaitable[Any]]]:
+def register_method(
+    method_name: str,
+) -> Callable[[Callable[..., Awaitable[Any]]], Callable[..., Awaitable[Any]]]:
     """Decorator to register a method handler."""
+
     def decorator(func: Callable[..., Awaitable[Any]]) -> Callable[..., Awaitable[Any]]:
         METHOD_REGISTRY[method_name] = func
         return func
+
     return decorator
 
 
