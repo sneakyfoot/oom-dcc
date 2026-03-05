@@ -47,6 +47,7 @@
         runtimePkgs = runtime.runtimePkgs;
         runtimeProfile = runtime.runtimeProfile;
         ocioConfigPath = ocio.configPath;
+        mcpServer = agent_server.mcpServer;
       };
 
       cli = import ./nix/cli.nix {
@@ -126,7 +127,6 @@
         publish-houdini-container = houdini.publishHoudiniContainer;
         mplay = houdini.mplayWrapper;
         oom = cli.oom;
-        agent-server = agent_server.agentServer;
         mcp-server = agent_server.mcpServer;
       };
     };

@@ -11,24 +11,24 @@ from typing import Any
 
 from fastmcp import FastMCP
 
-from oom_agent.session_manager import get_session_manager
 from oom_agent.context import bootstrap_context
 from oom_agent.guardrails import (
+    log_error,
+    log_operation,
+    log_success,
+    post_check_versioning,
     pre_check_runtime,
     pre_check_scene_path,
-    log_error,
-    log_success,
-    log_operation,
-    post_check_versioning,
 )
 from oom_agent.logging_config import get_logger
+from oom_agent.session_manager import get_session_manager
 
 logger = get_logger(__name__)
 
 mcp = FastMCP(
-    "OOM Houdini Agent",
+    "OOM DCC Server",
     instructions="""
-You are an MCP server controlling a persistent Houdini runtime for VFX pipeline operations.
+MCP server controlling a persistent Houdini runtime for VFX pipeline operations.
 
 Available capabilities:
 - Session management: Create/destroy Houdini sessions with ShotGrid context
@@ -38,12 +38,14 @@ Available capabilities:
 - Resources: Access scene files and project context
 
 Always verify session status before performing operations.
-""")
+""",
+)
 
 
 # ============================================================================
 # Session Management
 # ============================================================================
+
 
 @mcp.tool()
 async def create_session(
@@ -151,9 +153,7 @@ hou.session.oom_context = _context
             status="success",
             duration_ms=duration_ms,
         )
-        log_success(
-            session_id="mcp", method="create_session", duration_ms=duration_ms
-        )
+        log_success(session_id="mcp", method="create_session", duration_ms=duration_ms)
 
         return {
             "success": True,
@@ -221,6 +221,7 @@ async def get_status() -> dict[str, Any]:
 # ============================================================================
 # Scene Operations
 # ============================================================================
+
 
 @mcp.tool()
 async def scene_load(hip_path: str) -> dict[str, Any]:
@@ -385,6 +386,7 @@ async def scene_list() -> dict[str, Any]:
 # Code Execution
 # ============================================================================
 
+
 @mcp.tool()
 async def execute_code(code: str, timeout: float = 30.0) -> dict[str, Any]:
     """
@@ -454,6 +456,7 @@ async def execute_code(code: str, timeout: float = 30.0) -> dict[str, Any]:
 # ============================================================================
 # Tool Wrappers
 # ============================================================================
+
 
 @mcp.tool()
 async def farm_submit(
@@ -540,6 +543,7 @@ async def cache_refresh(node_path: str) -> dict[str, Any]:
 # Resources (for LLM access to files and context)
 # ============================================================================
 
+
 @mcp.resource("houdini://{project}/{sequence}/{shot}/scenes")
 async def list_scenes(project: str, sequence: str, shot: str) -> str:
     """
@@ -595,5 +599,10 @@ async def get_shot_context(project: str, sequence: str, shot: str) -> str:
 # Server Entry Point
 # ============================================================================
 
+
+def main() -> None:
+    mcp.run(transport="streamable-http", host="0.0.0.0", port=8080)
+
+
 if __name__ == "__main__":
-    mcp.run()
+    main()

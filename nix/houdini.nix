@@ -10,6 +10,7 @@
   src,
   shaTag,
   ocioConfigPath,
+  mcpServer,
 }:
 
 let
@@ -218,7 +219,7 @@ let
         "CURL_CA_BUNDLE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
         "GIT_SSL_CAINFO=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
       ];
-      Entrypoint = [ "/bin/bash" ];
+      Entrypoint = [ "${mcpServer}/bin/mcp-server" ];
     };
   };
 
