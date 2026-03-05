@@ -36,15 +36,6 @@ let
     ps.rich
     ps.uv-build
     sgtkPkg
-    # Agent server dependencies
-    ps.fastapi
-    ps.uvicorn
-    ps.pydantic
-    ps.pydantic-settings
-    ps.pillow
-    ps.jsonschema
-    # MCP dependencies
-    ps.fastmcp
   ]);
 
   pythonSitePkgs = "${pythonEnv}/${python.sitePackages}";

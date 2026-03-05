@@ -1,7 +1,7 @@
 {
   pkgs,
-  pythonEnv,
-  pythonPath,
+  mcpEnv,
+  mcpPythonPath,
   src,
 }:
 
@@ -10,9 +10,8 @@ let
     name = "mcp-server";
     text = ''
       export OOM=${src}
-      export PYTHONPATH=${pythonPath}
-
-      exec ${pythonEnv}/bin/python -m oom_agent.mcp_server
+      export PYTHONPATH=${mcpPythonPath}
+      exec ${mcpEnv}/bin/python -m oom_agent.mcp_server
     '';
   };
 

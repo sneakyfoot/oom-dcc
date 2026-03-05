@@ -21,6 +21,12 @@
       pythonPath = pythonEnvNix.pythonPath;
       pythonToolchain = pythonEnvNix.toolchain;
 
+      mcpEnvNix = import ./nix/mcp-env.nix {
+        inherit pkgs src;
+      };
+      mcpEnv = mcpEnvNix.mcpEnv;
+      mcpPythonPath = mcpEnvNix.mcpPythonPath;
+
       shaTag = self.shortRev or self.dirtyShortRev;
 
       ocio = {
@@ -36,6 +42,15 @@
           ;
       };
 
+      agent_server = import ./nix/server.nix {
+        inherit
+          pkgs
+          mcpEnv
+          mcpPythonPath
+          src
+          ;
+      };
+
       houdini = import ./nix/houdini.nix {
         inherit
           pkgs
@@ -43,23 +58,15 @@
           pythonPath
           src
           shaTag
+          mcpEnv
           ;
+        mcpServer = agent_server.mcpServer;
         runtimePkgs = runtime.runtimePkgs;
         runtimeProfile = runtime.runtimeProfile;
         ocioConfigPath = ocio.configPath;
-        mcpServer = agent_server.mcpServer;
       };
 
       cli = import ./nix/cli.nix {
-        inherit
-          pkgs
-          pythonEnv
-          pythonPath
-          src
-          ;
-      };
-
-      agent_server = import ./nix/server.nix {
         inherit
           pkgs
           pythonEnv
@@ -111,9 +118,7 @@
           echo "OOM DCC Development Shell"
           echo "=========================="
           echo ""
-          echo "Run agent server: python -m oom_agent.server"
-          echo "Run MCP server:   python -m oom_agent.mcp_server"
-          echo "Run MCP client:   python -m oom_agent.mcp_client_example"
+          echo "Run MCP server:   nix run .#mcp-server"
           echo ""
         '';
       };

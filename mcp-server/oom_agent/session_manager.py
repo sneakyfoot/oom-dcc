@@ -132,6 +132,11 @@ class SessionManager:
 
         env = os.environ.copy()
         env.update(context_info.get("env_vars", {}))
+        # Hython runs python3.11; swap in OOM_PYTHONPATH so it doesn't get
+        # the MCP server's python3.13 packages on PYTHONPATH.
+        oom_pythonpath = env.get("OOM_PYTHONPATH")
+        if oom_pythonpath:
+            env["PYTHONPATH"] = oom_pythonpath
         env["PYTHONUNBUFFERED"] = "1"
 
         process = subprocess.Popen(

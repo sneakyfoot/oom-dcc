@@ -11,6 +11,7 @@
   shaTag,
   ocioConfigPath,
   mcpServer,
+  mcpEnv,
 }:
 
 let
@@ -168,6 +169,8 @@ let
         pkgs.openssh
         pkgs.cacert
         pythonEnv
+        mcpEnv
+        mcpServer
         src
       ]
       ++ houdiniDeps;
@@ -219,7 +222,7 @@ let
         "CURL_CA_BUNDLE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
         "GIT_SSL_CAINFO=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
       ];
-      Entrypoint = [ "${mcpServer}/bin/mcp-server" ];
+      Entrypoint = [ "/bin/bash" ];
     };
   };
 
