@@ -43,6 +43,8 @@ let
     ps.pydantic-settings
     ps.pillow
     ps.jsonschema
+    # MCP dependencies
+    ps.fastmcp
   ]);
 
   pythonSitePkgs = "${pythonEnv}/${python.sitePackages}";

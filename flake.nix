@@ -106,7 +106,15 @@
           OCIO = ocio.configPath;
         };
 
-        shellHook = "";
+        shellHook = ''
+          echo "OOM DCC Development Shell"
+          echo "=========================="
+          echo ""
+          echo "Run agent server: python -m oom_agent.server"
+          echo "Run MCP server:   python -m oom_agent.mcp_server"
+          echo "Run MCP client:   python -m oom_agent.mcp_client_example"
+          echo ""
+        '';
       };
 
       packages.${system} = {
@@ -119,6 +127,7 @@
         mplay = houdini.mplayWrapper;
         oom = cli.oom;
         agent-server = agent_server.agentServer;
+        mcp-server = agent_server.mcpServer;
       };
     };
 }
