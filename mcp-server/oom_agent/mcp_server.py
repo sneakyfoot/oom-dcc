@@ -5,11 +5,39 @@ Exposes Houdini pipeline operations as MCP tools and resources.
 
 import asyncio
 import json
+import os
 import time
 from pathlib import Path
 from typing import Any
 
-from fastmcp import FastMCP
+import fastmcp
+
+
+class _NoTasksMCP(fastmcp.FastMCP):
+    """FastMCP subclass that suppresses MCP tasks capability.
+
+    FastMCP 2.14.5 unconditionally advertises a ``tasks`` capability whose
+    JSON shape is incompatible with rmcp 0.13.0 (the Rust MCP client used
+    by daemon-wizard).  We suppress it at both layers:
+    - Skip task protocol handler registration
+    - Patch the low-level server's get_capabilities to strip ``tasks``
+    """
+
+    def _setup_task_protocol_handlers(self) -> None:
+        pass
+
+    def _setup_handlers(self) -> None:
+        super()._setup_handlers()
+        # Monkey-patch the low-level server to strip tasks from capabilities
+        orig_get_caps = self._mcp_server.get_capabilities
+
+        def _get_caps_no_tasks(*args: Any, **kwargs: Any) -> Any:
+            caps = orig_get_caps(*args, **kwargs)
+            caps.tasks = None
+            return caps
+
+        self._mcp_server.get_capabilities = _get_caps_no_tasks  # type: ignore[method-assign]
+
 
 from oom_agent.context import bootstrap_context
 from oom_agent.guardrails import (
@@ -25,7 +53,7 @@ from oom_agent.session_manager import get_session_manager
 
 logger = get_logger(__name__)
 
-mcp = FastMCP(
+mcp = _NoTasksMCP(
     "OOM DCC Server",
     instructions="""
 MCP server controlling a persistent Houdini runtime for VFX pipeline operations.
@@ -137,7 +165,8 @@ hou.session.oom_tk = _tk
 hou.session.oom_context = _context
 """.strip()
 
-        bootstrap_result = await manager.execute(bootstrap_code, timeout=120.0)
+        bootstrap_timeout = float(os.environ.get("OOM_BOOTSTRAP_TIMEOUT", "600"))
+        bootstrap_result = await manager.execute(bootstrap_code, timeout=bootstrap_timeout)
         if not bootstrap_result["ok"]:
             await asyncio.to_thread(manager.shutdown, True)
             raise RuntimeError(
@@ -243,7 +272,8 @@ async def scene_load(hip_path: str) -> dict[str, Any]:
     code = f"import hou\nhou.hipFile.load({json.dumps(hip_path)})"
 
     try:
-        result = await manager.execute(code, timeout=60.0)
+        scene_timeout = float(os.environ.get("OOM_SCENE_TIMEOUT", "600"))
+        result = await manager.execute(code, timeout=scene_timeout)
         if not result["ok"]:
             raise RuntimeError(result["stderr"] or "Failed to load scene")
 
@@ -286,7 +316,8 @@ async def scene_save() -> dict[str, Any]:
 
     code = "import hou\nhou.hipFile.saveAndBackup()"
     try:
-        result = await manager.execute(code, timeout=60.0)
+        scene_timeout = float(os.environ.get("OOM_SCENE_TIMEOUT", "600"))
+        result = await manager.execute(code, timeout=scene_timeout)
         if not result["ok"]:
             raise RuntimeError(result["stderr"] or "Failed to save scene")
 

@@ -35,7 +35,8 @@ def bootstrap_context(
     env = os.environ.copy()
     env["PYTHONPATH"] = oom_pythonpath
 
-    result = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=120)
+    ctx_timeout = float(os.environ.get("OOM_CONTEXT_TIMEOUT", "600"))
+    result = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=ctx_timeout)
     if result.returncode != 0:
         raise RuntimeError(f"oom_context failed: {result.stderr}")
 

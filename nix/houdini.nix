@@ -169,7 +169,6 @@ let
         pkgs.openssh
         pkgs.cacert
         pythonEnv
-        mcpEnv
         mcpServer
         src
       ]

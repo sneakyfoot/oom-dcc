@@ -155,7 +155,8 @@ class SessionManager:
         )
         self._stderr_thread.start()
 
-        ready_payload = self._read_json_response(timeout=30.0)
+        worker_timeout = float(os.environ.get("OOM_WORKER_TIMEOUT", "300"))
+        ready_payload = self._read_json_response(timeout=worker_timeout)
         if ready_payload is None:
             self.shutdown(force=True)
             raise RuntimeError("Timed out waiting for hython worker startup")
