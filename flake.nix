@@ -3,8 +3,12 @@
 
   inputs.nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
 
+  # Pin for VFX python3.11 packages (kubernetes etc.) whose dep closure
+  # breaks when nixpkgs moves sphinx past python 3.11 support.
+  inputs.nixpkgs-py311.url = "github:nixos/nixpkgs/a82ccc39b39b621151d6732718e3e250109076fa";
+
   outputs =
-    { self, nixpkgs }:
+    { self, nixpkgs, nixpkgs-py311 }:
     let
       system = "x86_64-linux";
       pkgs = import nixpkgs {
@@ -13,9 +17,13 @@
         config.cudaSupport = true;
       };
 
+      pkgs-py311 = import nixpkgs-py311 {
+        inherit system;
+      };
+
       src = pkgs.lib.cleanSource ./.;
       pythonEnvNix = import ./nix/python-env.nix {
-        inherit pkgs src;
+        inherit pkgs pkgs-py311 src;
       };
       pythonEnv = pythonEnvNix.pythonEnv;
       pythonPath = pythonEnvNix.pythonPath;
