@@ -72,6 +72,7 @@ class SessionManager:
         self._process: Optional[subprocess.Popen[str]] = None
         self._conn: Optional[rpyc.Connection] = None
         self._hou: Optional[Any] = None
+        self._remote_exec: Optional[Any] = None  # callable proxy for LIVE mode
         self._mode: Optional[ConnectionMode] = None
         self._exec_lock = asyncio.Lock()
         self._stderr_buffer: deque[str] = deque(maxlen=200)
@@ -210,12 +211,33 @@ class SessionManager:
         self, context_info: dict[str, Any], host: str, port: int
     ) -> None:
         rpyc_timeout = float(os.environ.get("OOM_RPYC_TIMEOUT", "30"))
-        self._conn = rpyc.connect(
+        # hrpyc starts a SlaveService -- connect with rpyc.classic so that
+        # conn.modules, conn.execute, and conn.builtins are available.
+        self._conn = rpyc.classic.connect(
             host,
             port,
-            config={"sync_request_timeout": rpyc_timeout, "allow_public_attrs": True},
+            config={"sync_request_timeout": rpyc_timeout},
         )
-        self._hou = self._conn.root.hou
+        self._hou = self._conn.modules.hou
+
+        # Inject a stdout/stderr-capturing exec helper into the remote namespace
+        # so execute_remote() has the same visibility as HYTHON mode.
+        self._conn.execute(
+            "import contextlib as _oom_cl, io as _oom_io, traceback as _oom_tb\n"
+            "def _oom_exec(code):\n"
+            "    import hou\n"
+            "    buf_out, buf_err = _oom_io.StringIO(), _oom_io.StringIO()\n"
+            "    ok = True\n"
+            "    ns = {'hou': hou, '__name__': '__main__'}\n"
+            "    with _oom_cl.redirect_stdout(buf_out), _oom_cl.redirect_stderr(buf_err):\n"
+            "        try:\n"
+            "            exec(code, ns, ns)\n"
+            "        except Exception:\n"
+            "            ok = False\n"
+            "            _oom_tb.print_exc(file=buf_err)\n"
+            "    return {'ok': ok, 'stdout': buf_out.getvalue(), 'stderr': buf_err.getvalue()}\n"
+        )
+        self._remote_exec = self._conn.eval("_oom_exec")
 
         # Try to read existing context from the live session
         project = context_info.get("project")
@@ -258,19 +280,22 @@ class SessionManager:
             raise RuntimeError("Session not initialized; call agent.create_session first")
 
         try:
-            async_exec = rpyc.async_(self._conn.root.exec)
-            future = async_exec(code)
-            future.wait(timeout=timeout)
-            result = future.value
+            if self._remote_exec is not None:
+                # LIVE mode: call the _oom_exec helper injected at connect time.
+                # Returns a netref dict with ok/stdout/stderr -- same shape as OomService.
+                result = self._remote_exec(code)
+            else:
+                # HYTHON mode: OomService exposes exec() with stdout/stderr capture.
+                async_exec = rpyc.async_(self._conn.root.exec)
+                future = async_exec(code)
+                future.wait(timeout=timeout)
+                result = future.value
+
             return {
                 "ok": bool(result["ok"]),
                 "stdout": str(result["stdout"] or ""),
                 "stderr": str(result["stderr"] or ""),
             }
-        except AttributeError:
-            raise RuntimeError(
-                "Remote code execution not available in this connection mode"
-            )
         except EOFError:
             self._mark_unhealthy("rpyc connection lost")
             raise RuntimeError("rpyc connection to hython worker was lost")
@@ -318,6 +343,7 @@ class SessionManager:
                 pass
             self._conn = None
             self._hou = None
+            self._remote_exec = None
             did_shutdown = True
 
         if self._process is not None:
