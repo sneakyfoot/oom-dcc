@@ -213,11 +213,8 @@ class SessionManager:
         rpyc_timeout = float(os.environ.get("OOM_RPYC_TIMEOUT", "30"))
         # hrpyc starts a SlaveService -- connect with rpyc.classic so that
         # conn.modules, conn.execute, and conn.builtins are available.
-        self._conn = rpyc.classic.connect(
-            host,
-            port,
-            config={"sync_request_timeout": rpyc_timeout},
-        )
+        self._conn = rpyc.classic.connect(host, port)
+        self._conn._config["sync_request_timeout"] = rpyc_timeout  # type: ignore[index]
         self._hou = self._conn.modules.hou
 
         # Inject a stdout/stderr-capturing exec helper into the remote namespace
