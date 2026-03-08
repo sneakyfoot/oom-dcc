@@ -8,7 +8,11 @@
   inputs.nixpkgs-py311.url = "github:nixos/nixpkgs/a82ccc39b39b621151d6732718e3e250109076fa";
 
   outputs =
-    { self, nixpkgs, nixpkgs-py311 }:
+    {
+      self,
+      nixpkgs,
+      nixpkgs-py311,
+    }:
     let
       system = "x86_64-linux";
       pkgs = import nixpkgs {
@@ -122,13 +126,7 @@
           OCIO = ocio.configPath;
         };
 
-        shellHook = ''
-          echo "OOM DCC Development Shell"
-          echo "=========================="
-          echo ""
-          echo "Run MCP server:   nix run .#mcp-server"
-          echo ""
-        '';
+        shellHook = "";
       };
 
       packages.${system} = {

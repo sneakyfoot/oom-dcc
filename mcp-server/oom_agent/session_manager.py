@@ -9,13 +9,17 @@ import asyncio
 import json
 import os
 import select
+import socket
 import subprocess
 import threading
 import time
 from collections import deque
 from dataclasses import dataclass, field
+from enum import Enum
 from pathlib import Path
 from typing import Any, Optional
+
+import rpyc
 
 
 def _hython_path() -> str:
@@ -28,60 +32,19 @@ def _hython_path() -> str:
     return hython
 
 
-def _worker_source() -> str:
-    return """
-import contextlib
-import io
-import json
-import sys
-import traceback
+def _worker_script_path() -> str:
+    return str(Path(__file__).parent / "hython_rpyc_worker.py")
 
-_globals = {"__name__": "__main__"}
 
-def _emit(payload):
-    sys.__stdout__.write(json.dumps(payload) + "\\n")
-    sys.__stdout__.flush()
+def _find_free_port() -> int:
+    with socket.socket() as s:
+        s.bind(("", 0))
+        return s.getsockname()[1]
 
-_emit({"type": "ready"})
 
-for _line in sys.stdin:
-    _line = _line.strip()
-    if not _line:
-        continue
-
-    _request_id = None
-    try:
-        _request = json.loads(_line)
-        _request_id = _request.get("id")
-    except Exception as exc:
-        _emit({"id": _request_id, "ok": False, "stdout": "", "stderr": f"Invalid request: {exc}"})
-        continue
-
-    if _request.get("op") == "shutdown":
-        _emit({"id": _request_id, "ok": True, "stdout": "", "stderr": ""})
-        break
-
-    _code = _request.get("code") or ""
-    _stdout = io.StringIO()
-    _stderr = io.StringIO()
-    _ok = True
-
-    with contextlib.redirect_stdout(_stdout), contextlib.redirect_stderr(_stderr):
-        try:
-            exec(_code, _globals, _globals)
-        except Exception:
-            _ok = False
-            traceback.print_exc()
-
-    _emit(
-        {
-            "id": _request_id,
-            "ok": _ok,
-            "stdout": _stdout.getvalue(),
-            "stderr": _stderr.getvalue(),
-        }
-    )
-"""
+class ConnectionMode(Enum):
+    HYTHON = "hython"  # Spawn hython subprocess, start rpyc server, connect
+    LIVE = "live"      # Connect to existing Houdini GUI hrpyc server
 
 
 @dataclass
@@ -98,6 +61,7 @@ class RuntimeState:
     healthy: bool = False
     worker_pid: Optional[int] = None
     last_error: Optional[str] = None
+    mode: Optional[str] = None
 
 
 class SessionManager:
@@ -106,8 +70,10 @@ class SessionManager:
     def __init__(self) -> None:
         self._state = RuntimeState()
         self._process: Optional[subprocess.Popen[str]] = None
+        self._conn: Optional[rpyc.Connection] = None
+        self._hou: Optional[Any] = None
+        self._mode: Optional[ConnectionMode] = None
         self._exec_lock = asyncio.Lock()
-        self._request_counter = 0
         self._stderr_buffer: deque[str] = deque(maxlen=200)
         self._stderr_thread: Optional[threading.Thread] = None
 
@@ -118,18 +84,51 @@ class SessionManager:
     def is_initialized(self) -> bool:
         return self._state.initialized
 
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
     def _read_stderr_forever(self) -> None:
         if self._process is None or self._process.stderr is None:
             return
         for line in self._process.stderr:
             self._stderr_buffer.append(line.rstrip("\n"))
 
-    def initialize(self, context_info: dict[str, Any]) -> RuntimeState:
+    def _readline_from_process(self, timeout: float) -> Optional[str]:
+        if self._process is None or self._process.stdout is None:
+            return None
+        fd = self._process.stdout.fileno()
+        ready, _, _ = select.select([fd], [], [], timeout)
+        if not ready:
+            return None
+        line = self._process.stdout.readline()
+        return line.strip() if line else None
+
+    # ------------------------------------------------------------------
+    # Initialize
+    # ------------------------------------------------------------------
+
+    def initialize(
+        self,
+        context_info: dict[str, Any],
+        mode: ConnectionMode = ConnectionMode.HYTHON,
+        host: str = "localhost",
+        port: int = 18811,
+    ) -> RuntimeState:
         if self._state.initialized:
             raise RuntimeError(
                 "Session already active; call agent.destroy_session first"
             )
 
+        self._mode = mode
+        if mode == ConnectionMode.HYTHON:
+            self._initialize_hython(context_info)
+        else:
+            self._initialize_live(context_info, host, port)
+
+        return self._state
+
+    def _initialize_hython(self, context_info: dict[str, Any]) -> None:
         env = os.environ.copy()
         env.update(context_info.get("env_vars", {}))
         # Hython runs python3.11; swap in OOM_PYTHONPATH so it doesn't get
@@ -139,16 +138,18 @@ class SessionManager:
             env["PYTHONPATH"] = oom_pythonpath
         env["PYTHONUNBUFFERED"] = "1"
 
+        port = int(env.get("OOM_HRPYC_PORT") or "0") or _find_free_port()
+        env["OOM_HRPYC_PORT"] = str(port)
+
         process = subprocess.Popen(
-            [_hython_path(), "--indie", "-u", "-c", _worker_source()],
-            stdin=subprocess.PIPE,
+            [_hython_path(), "--indie", "-u", _worker_script_path()],
+            stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
             bufsize=1,
             env=env,
         )
-
         self._process = process
         self._stderr_thread = threading.Thread(
             target=self._read_stderr_forever, daemon=True
@@ -156,7 +157,23 @@ class SessionManager:
         self._stderr_thread.start()
 
         worker_timeout = float(os.environ.get("OOM_WORKER_TIMEOUT", "300"))
-        ready_payload = self._read_json_response(timeout=worker_timeout)
+        deadline = time.monotonic() + worker_timeout
+        ready_payload = None
+
+        while time.monotonic() < deadline:
+            remaining = deadline - time.monotonic()
+            line = self._readline_from_process(timeout=min(remaining, 5.0))
+            if line is None:
+                if process.poll() is not None:
+                    self.shutdown(force=True)
+                    raise RuntimeError("Hython worker exited before ready")
+                continue
+            try:
+                ready_payload = json.loads(line)
+                break
+            except Exception:
+                continue
+
         if ready_payload is None:
             self.shutdown(force=True)
             raise RuntimeError("Timed out waiting for hython worker startup")
@@ -166,6 +183,15 @@ class SessionManager:
             raise RuntimeError(
                 f"Unexpected startup payload from hython worker: {ready_payload}"
             )
+
+        actual_port = ready_payload.get("port", port)
+        rpyc_timeout = float(os.environ.get("OOM_RPYC_TIMEOUT", "30"))
+        self._conn = rpyc.connect(
+            "localhost",
+            actual_port,
+            config={"sync_request_timeout": rpyc_timeout, "allow_public_attrs": True},
+        )
+        self._hou = self._conn.root.hou
 
         self._state = RuntimeState(
             initialized=True,
@@ -177,118 +203,142 @@ class SessionManager:
             env_vars=context_info.get("env_vars", {}),
             healthy=True,
             worker_pid=process.pid,
+            mode="hython",
         )
-        return self._state
 
-    def _readline_with_timeout(self, timeout: float) -> Optional[str]:
-        if self._process is None or self._process.stdout is None:
-            return None
-        fd = self._process.stdout.fileno()
-        ready, _, _ = select.select([fd], [], [], timeout)
-        if not ready:
-            return None
-        line = self._process.stdout.readline()
-        if not line:
-            return None
-        return line.strip()
+    def _initialize_live(
+        self, context_info: dict[str, Any], host: str, port: int
+    ) -> None:
+        rpyc_timeout = float(os.environ.get("OOM_RPYC_TIMEOUT", "30"))
+        self._conn = rpyc.connect(
+            host,
+            port,
+            config={"sync_request_timeout": rpyc_timeout, "allow_public_attrs": True},
+        )
+        self._hou = self._conn.root.hou
 
-    def _read_json_response(
-        self,
-        timeout: float,
-        request_id: Optional[int] = None,
-    ) -> Optional[dict[str, Any]]:
-        deadline = time.monotonic() + timeout
-        while True:
-            remaining = deadline - time.monotonic()
-            if remaining <= 0:
-                return None
+        # Try to read existing context from the live session
+        project = context_info.get("project")
+        sequence = context_info.get("sequence")
+        shot = context_info.get("shot")
+        try:
+            ctx = self._hou.session.oom_context
+            if ctx is not None and project is None:
+                project = str(ctx.project.get("name", "")) or None
+        except Exception:
+            pass
 
-            line = self._readline_with_timeout(timeout=remaining)
-            if line is None:
-                return None
+        self._state = RuntimeState(
+            initialized=True,
+            created_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            project=project,
+            sequence=sequence,
+            shot=shot,
+            paths=context_info.get("paths", {}),
+            env_vars=context_info.get("env_vars", {}),
+            healthy=True,
+            mode="live",
+        )
 
-            try:
-                payload = json.loads(line)
-            except Exception:
-                continue
+    # ------------------------------------------------------------------
+    # RPC access
+    # ------------------------------------------------------------------
 
-            if request_id is None or payload.get("id") == request_id:
-                return payload
+    def get_hou(self) -> Any:
+        """Return the hou proxy object for direct RPC calls."""
+        if self._hou is None:
+            raise RuntimeError("Session not initialized; call agent.create_session first")
+        return self._hou
+
+    def execute_remote(self, code: str, timeout: float) -> dict[str, Any]:
+        """Execute arbitrary Python code in the remote hython session."""
+        if self._conn is None:
+            raise RuntimeError("Session not initialized; call agent.create_session first")
+        if not self._state.initialized:
+            raise RuntimeError("Session not initialized; call agent.create_session first")
+
+        try:
+            async_exec = rpyc.async_(self._conn.root.exec)
+            future = async_exec(code)
+            future.wait(timeout=timeout)
+            result = future.value
+            return {
+                "ok": bool(result["ok"]),
+                "stdout": str(result["stdout"] or ""),
+                "stderr": str(result["stderr"] or ""),
+            }
+        except AttributeError:
+            raise RuntimeError(
+                "Remote code execution not available in this connection mode"
+            )
+        except EOFError:
+            self._mark_unhealthy("rpyc connection lost")
+            raise RuntimeError("rpyc connection to hython worker was lost")
 
     async def execute(self, code: str, timeout: float) -> dict[str, Any]:
+        """Async wrapper for execute_remote (preserves existing interface)."""
         async with self._exec_lock:
-            return await asyncio.to_thread(self._execute_blocking, code, timeout)
+            return await asyncio.to_thread(self.execute_remote, code, timeout)
 
-    def _execute_blocking(self, code: str, timeout: float) -> dict[str, Any]:
-        if not self._state.initialized:
-            raise RuntimeError(
-                "Session not initialized; call agent.create_session first"
-            )
-        if self._process is None or self._process.poll() is not None:
-            self._mark_unhealthy("Hython worker is not running")
-            raise RuntimeError("Hython worker is not running")
-        if self._process.stdin is None:
-            self._mark_unhealthy("Hython worker stdin unavailable")
-            raise RuntimeError("Hython worker stdin unavailable")
-
-        self._request_counter += 1
-        request_id = self._request_counter
-        payload = {"id": request_id, "op": "exec", "code": code}
-        self._process.stdin.write(json.dumps(payload) + "\n")
-        self._process.stdin.flush()
-
-        response = self._read_json_response(timeout=timeout, request_id=request_id)
-        if response is None:
-            self._mark_unhealthy(f"Execution timed out after {timeout} seconds")
-            raise TimeoutError(f"Execution timed out after {timeout} seconds")
-
-        return {
-            "ok": bool(response.get("ok", False)),
-            "stdout": str(response.get("stdout") or ""),
-            "stderr": str(response.get("stderr") or ""),
-        }
+    def _check_connection(self) -> bool:
+        if self._conn is None:
+            return False
+        try:
+            self._conn.ping()
+            return True
+        except Exception:
+            return False
 
     def _mark_unhealthy(self, error: str) -> None:
         self._state.healthy = False
         self._state.last_error = error
 
+    # ------------------------------------------------------------------
+    # State helpers
+    # ------------------------------------------------------------------
+
     def set_hip_state(self, hip_path: Optional[str], loaded: bool) -> None:
         self._state.hip_path = hip_path
         self._state.hip_loaded = loaded
 
-    def shutdown(self, force: bool = False) -> bool:
-        if self._process is None:
-            self._state = RuntimeState()
-            return False
-
-        process = self._process
-        did_shutdown = True
-
-        if process.poll() is None and not force and process.stdin:
-            try:
-                self._request_counter += 1
-                process.stdin.write(
-                    json.dumps({"id": self._request_counter, "op": "shutdown"}) + "\n"
-                )
-                process.stdin.flush()
-                self._readline_with_timeout(timeout=2.0)
-            except Exception:
-                pass
-
-        if process.poll() is None:
-            process.terminate()
-            try:
-                process.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                process.kill()
-                process.wait(timeout=5)
-
-        self._process = None
-        self._state = RuntimeState()
-        return did_shutdown
-
     def stderr_tail(self) -> list[str]:
         return list(self._stderr_buffer)
+
+    # ------------------------------------------------------------------
+    # Shutdown
+    # ------------------------------------------------------------------
+
+    def shutdown(self, force: bool = False) -> bool:
+        did_shutdown = False
+
+        if self._conn is not None:
+            try:
+                self._conn.close()
+            except Exception:
+                pass
+            self._conn = None
+            self._hou = None
+            did_shutdown = True
+
+        if self._process is not None:
+            process = self._process
+            if process.poll() is None:
+                if force:
+                    process.kill()
+                    process.wait(timeout=5)
+                else:
+                    process.terminate()
+                    try:
+                        process.wait(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        process.kill()
+                        process.wait(timeout=5)
+            self._process = None
+            did_shutdown = True
+
+        self._mode = None
+        self._state = RuntimeState()
+        return did_shutdown
 
 
 _session_manager: Optional[SessionManager] = None

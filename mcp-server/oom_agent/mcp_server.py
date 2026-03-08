@@ -49,7 +49,7 @@ from oom_agent.guardrails import (
     pre_check_scene_path,
 )
 from oom_agent.logging_config import get_logger
-from oom_agent.session_manager import get_session_manager
+from oom_agent.session_manager import ConnectionMode, get_session_manager
 
 logger = get_logger(__name__)
 
@@ -75,42 +75,17 @@ Always verify session status before performing operations.
 # ============================================================================
 
 
-@mcp.tool()
-async def create_session(
+def _shotgrid_bootstrap_code(
     project: str,
-    sequence: str | None = None,
-    shot: str | None = None,
-) -> dict[str, Any]:
-    """
-    Create a new Houdini session with ShotGrid context.
-
-    Args:
-        project: ShotGrid project name
-        sequence: Sequence code (optional)
-        shot: Shot code (requires sequence)
-
-    Returns:
-        Session state with project, sequence, shot, and paths
-    """
-    start_time = time.time()
-
-    try:
-        context_info = await asyncio.to_thread(
-            bootstrap_context,
-            project,
-            sequence,
-            shot,
-        )
-        manager = get_session_manager()
-        state = await asyncio.to_thread(manager.initialize, context_info)
-
-        # Bootstrap ShotGrid context inside Houdini
-        bootstrap_code = f"""
+    sequence: str | None,
+    shot: str | None,
+) -> str:
+    """Return the Python code to bootstrap ShotGrid context inside hython."""
+    return f"""
 import hou
 import sgtk
 import oom_sg_auth
 from oom_bootstrap import bootstrap
-import json
 
 _project_name = {json.dumps(project)}
 _sequence_name = {json.dumps(sequence)}
@@ -165,20 +140,76 @@ hou.session.oom_tk = _tk
 hou.session.oom_context = _context
 """.strip()
 
-        bootstrap_timeout = float(os.environ.get("OOM_BOOTSTRAP_TIMEOUT", "600"))
-        bootstrap_result = await manager.execute(bootstrap_code, timeout=bootstrap_timeout)
-        if not bootstrap_result["ok"]:
-            await asyncio.to_thread(manager.shutdown, True)
-            raise RuntimeError(
-                f"Failed to bootstrap context inside hython: "
-                f"{bootstrap_result['stderr'] or 'unknown error'}"
+
+@mcp.tool()
+async def create_session(
+    project: str,
+    sequence: str | None = None,
+    shot: str | None = None,
+    mode: str = "hython",
+    host: str = "localhost",
+    port: int = 18811,
+) -> dict[str, Any]:
+    """
+    Create a new Houdini session with ShotGrid context.
+
+    Args:
+        project: ShotGrid project name
+        sequence: Sequence code (optional)
+        shot: Shot code (requires sequence)
+        mode: Connection mode -- "hython" (spawn headless hython) or "live"
+              (connect to an existing Houdini GUI session running hrpyc)
+        host: hrpyc host for live mode (default: localhost)
+        port: hrpyc port for live mode (default: 18811)
+
+    Returns:
+        Session state with project, sequence, shot, and paths
+    """
+    start_time = time.time()
+
+    try:
+        conn_mode = ConnectionMode(mode)
+    except ValueError:
+        return {
+            "success": False,
+            "error": f"Invalid mode: {mode!r}; use 'hython' or 'live'",
+        }
+
+    try:
+        context_info = await asyncio.to_thread(
+            bootstrap_context,
+            project,
+            sequence,
+            shot,
+        )
+        manager = get_session_manager()
+        state = await asyncio.to_thread(
+            manager.initialize,
+            context_info,
+            conn_mode,
+            host,
+            port,
+        )
+
+        if conn_mode == ConnectionMode.HYTHON:
+            # Bootstrap ShotGrid context inside hython via remote execution
+            bootstrap_timeout = float(os.environ.get("OOM_BOOTSTRAP_TIMEOUT", "600"))
+            bootstrap_result = await manager.execute(
+                _shotgrid_bootstrap_code(project, sequence, shot),
+                timeout=bootstrap_timeout,
             )
+            if not bootstrap_result["ok"]:
+                await asyncio.to_thread(manager.shutdown, True)
+                raise RuntimeError(
+                    f"Failed to bootstrap context inside hython: "
+                    f"{bootstrap_result['stderr'] or 'unknown error'}"
+                )
 
         duration_ms = int((time.time() - start_time) * 1000)
         log_operation(
             session_id="mcp",
             method="create_session",
-            params={"project": project, "sequence": sequence, "shot": shot},
+            params={"project": project, "sequence": sequence, "shot": shot, "mode": mode},
             status="success",
             duration_ms=duration_ms,
         )
@@ -191,6 +222,7 @@ hou.session.oom_context = _context
             "sequence": state.sequence,
             "shot": state.shot,
             "paths": state.paths,
+            "mode": state.mode,
             "worker_pid": state.worker_pid,
         }
 
@@ -242,6 +274,7 @@ async def get_status() -> dict[str, Any]:
         "paths": state.paths,
         "hip_loaded": state.hip_loaded,
         "hip_path": state.hip_path,
+        "mode": state.mode,
         "worker_pid": state.worker_pid,
         "last_error": state.last_error,
     }
@@ -269,13 +302,10 @@ async def scene_load(hip_path: str) -> dict[str, Any]:
         return {"success": False, "error": f"Invalid hip_path: {hip_path}"}
 
     manager = get_session_manager()
-    code = f"import hou\nhou.hipFile.load({json.dumps(hip_path)})"
 
     try:
-        scene_timeout = float(os.environ.get("OOM_SCENE_TIMEOUT", "600"))
-        result = await manager.execute(code, timeout=scene_timeout)
-        if not result["ok"]:
-            raise RuntimeError(result["stderr"] or "Failed to load scene")
+        hou = manager.get_hou()
+        await asyncio.to_thread(hou.hipFile.load, hip_path)
 
         manager.set_hip_state(hip_path=hip_path, loaded=True)
         duration_ms = int((time.time() - start_time) * 1000)
@@ -285,7 +315,6 @@ async def scene_load(hip_path: str) -> dict[str, Any]:
             "success": True,
             "hip_path": hip_path,
             "loaded": True,
-            "stdout": result["stdout"],
         }
 
     except Exception as exc:
@@ -314,12 +343,9 @@ async def scene_save() -> dict[str, Any]:
     if not state.hip_loaded:
         return {"success": False, "error": "No scene loaded"}
 
-    code = "import hou\nhou.hipFile.saveAndBackup()"
     try:
-        scene_timeout = float(os.environ.get("OOM_SCENE_TIMEOUT", "600"))
-        result = await manager.execute(code, timeout=scene_timeout)
-        if not result["ok"]:
-            raise RuntimeError(result["stderr"] or "Failed to save scene")
+        hou = manager.get_hou()
+        await asyncio.to_thread(hou.hipFile.saveAndBackup)
 
         post_check_versioning(state.hip_path or "")
         duration_ms = int((time.time() - start_time) * 1000)
@@ -329,7 +355,6 @@ async def scene_save() -> dict[str, Any]:
             "success": True,
             "hip_path": state.hip_path,
             "version": "current",
-            "stdout": result["stdout"],
         }
 
     except Exception as exc:
