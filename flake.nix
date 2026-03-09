@@ -123,7 +123,6 @@
 
         env = {
           PYTHONPATH = pythonPath;
-          OCIO = ocio.configPath;
         };
 
         shellHook = "";
