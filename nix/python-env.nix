@@ -1,5 +1,6 @@
 {
   pkgs,
+  pkgs-py311,
   src,
   sgtkRev ? "62d128a8a3e06fe37cc9de5c6a699415c6b51c70",
   sgtkHash ? "sha256-gMA264hx7AOyjGUzkSlX2O7zFq5H6LAeGh68vMyUl2k=",
@@ -7,6 +8,10 @@
 
 let
   python = pkgs.python311;
+
+  # kubernetes and its full closure pinned to a nixpkgs where
+  # all transitive deps (sphinx etc.) still support python 3.11
+  pinnedKubernetes = pkgs-py311.python311Packages.kubernetes;
 
   sgtkSrc = pkgs.fetchFromGitHub {
     owner = "shotgunsoftware";
@@ -31,7 +36,7 @@ let
 
   pythonEnv = python.withPackages (ps: [
     ps.jinja2
-    ps.kubernetes
+    pinnedKubernetes
     ps.pyyaml
     ps.rich
     ps.uv-build

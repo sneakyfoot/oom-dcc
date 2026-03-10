@@ -1,4 +1,6 @@
-from PySide6 import QtWidgets, QtCore
+import os
+
+from PySide6 import QtCore, QtWidgets
 import hou
 import hrpyc
 
@@ -8,7 +10,8 @@ class HrpcServerDialog(QtWidgets.QDialog):
 
     def __init__(self, parent=None):
         super(HrpcServerDialog, self).__init__(parent)
-        self.setWindowTitle("Houdini RPC Server")
+        port = int(os.environ.get("OOM_HRPYC_PORT", "18811"))
+        self.setWindowTitle(f"Houdini RPC Server  (port {port})")
         self.setWindowFlags(self.windowFlags() | QtCore.Qt.WindowStaysOnTopHint)
 
         layout = QtWidgets.QVBoxLayout(self)
@@ -16,8 +19,8 @@ class HrpcServerDialog(QtWidgets.QDialog):
         self.close_btn.clicked.connect(self.close_server)
         layout.addWidget(self.close_btn)
 
-        # Start the RPC server
-        self.server = hrpyc.start_server()
+        # Start the RPC server on the configured port
+        self.server = hrpyc.start_server(port=port)
 
     def close_server(self):
         try:

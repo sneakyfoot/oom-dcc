@@ -10,6 +10,8 @@
   src,
   shaTag,
   ocioConfigPath,
+  mcpServer,
+  mcpEnv,
 }:
 
 let
@@ -167,6 +169,7 @@ let
         pkgs.openssh
         pkgs.cacert
         pythonEnv
+        mcpServer
         src
       ]
       ++ houdiniDeps;
