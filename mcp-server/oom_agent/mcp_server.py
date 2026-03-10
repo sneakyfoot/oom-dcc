@@ -103,12 +103,17 @@ async def execute_code(code: str, timeout: float = 30.0) -> dict[str, Any]:
 # ============================================================================
 
 
+_LIST_SCENES_LIMIT = 200
+
+
 @mcp.resource("houdini://{project}/{sequence}/{shot}/scenes")
 async def list_scenes(project: str, sequence: str, shot: str) -> str:
     """
     List available scene files for a shot.
 
     Provides structured access to scene files in the VFX pipeline.
+    Returns at most 200 paths; use the scene(action="list") tool with
+    max_results for finer control.
     """
     try:
         context_info = await asyncio.to_thread(
@@ -130,7 +135,18 @@ async def list_scenes(project: str, sequence: str, shot: str) -> str:
                 if hip_file.is_file():
                     scenes.append(str(hip_file))
 
-        return json.dumps({"shot_path": shot_path, "scenes": scenes})
+        truncated = len(scenes) > _LIST_SCENES_LIMIT
+        if truncated:
+            scenes = scenes[:_LIST_SCENES_LIMIT]
+
+        result: dict = {"shot_path": shot_path, "scenes": scenes}
+        if truncated:
+            result["truncated"] = True
+            result["truncation_message"] = (
+                f"Results truncated at {_LIST_SCENES_LIMIT} items; "
+                "use scene(action='list') with max_results for finer control."
+            )
+        return json.dumps(result)
 
     except Exception as exc:
         return json.dumps({"error": str(exc)})

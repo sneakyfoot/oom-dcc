@@ -39,7 +39,10 @@ async def cook_node(node_path: str, mode: str = "session") -> dict[str, Any]:
         return err  # type: ignore[return-value]
 
     if mode not in ("session", "agent"):
-        return {"success": False, "error": f"Invalid mode {mode!r}; use 'session' or 'agent'"}
+        return {
+            "success": False,
+            "error": f"Invalid mode {mode!r}; use 'session' or 'agent'",
+        }
 
     if mode == "agent":
         func = "agent_cook"
@@ -64,7 +67,9 @@ print(json.dumps({{"cook_result": "started"}}))
         duration_ms = int((time.time() - start_time) * 1000)
         parsed = parse_remote_json(result)
         if parsed.get("success"):
-            log_success(session_id="mcp", method=f"cook_node.{func}", duration_ms=duration_ms)
+            log_success(
+                session_id="mcp", method=f"cook_node.{func}", duration_ms=duration_ms
+            )
         else:
             log_error(
                 session_id="mcp",
@@ -143,7 +148,10 @@ async def cache(
 
     if action == "get_versions":
         if not cache_name:
-            return {"success": False, "error": "cache_name is required for action='get_versions'"}
+            return {
+                "success": False,
+                "error": "cache_name is required for action='get_versions'",
+            }
         code = f"""
 import json
 from oom_houdini.oom_cache import get_versions
@@ -158,7 +166,10 @@ print(json.dumps({{"versions": versions, "cache_name": {json.dumps(cache_name)}}
 
     elif action == "refresh":
         if not node_path:
-            return {"success": False, "error": "node_path is required for action='refresh'"}
+            return {
+                "success": False,
+                "error": "node_path is required for action='refresh'",
+            }
         code = f"""
 import json
 import hou
@@ -194,6 +205,7 @@ async def publish(
     publish_type: str | None = None,
     step: str | None = None,
     node_path: str | None = None,
+    max_results: int = 200,
 ) -> dict[str, Any]:
     """
     Publish operations for the current shot context.
@@ -208,9 +220,14 @@ async def publish(
                       Required for load_latest; optional filter for list.
         step: Pipeline step code filter for list (e.g. "FX", "LIGHTING")
         node_path: Absolute path to the loader HDA node (required for load_latest)
+        max_results: Maximum number of PublishedFile records returned by
+            action="list" (default: 200). When the limit is hit the response
+            includes truncated=true and a truncation_message. Use publish_type
+            or step filters to narrow results.
 
     Returns:
-        For list: {publishes: {code: [{version_number, path, created_at, entity, publish_type}]}, count}
+        For list: {publishes: {code: [{version_number, path, created_at, entity, publish_type}]},
+                   count, [truncated, truncation_message]}
         For load_latest: {node_path, old_path, new_path}
     """
     ok, err = require_session()
@@ -218,6 +235,8 @@ async def publish(
         return err  # type: ignore[return-value]
 
     if action == "list":
+        # Fetch one extra record so we can detect truncation without a second query.
+        sg_limit = max_results + 1
         code = f"""
 import json
 import hou
@@ -249,7 +268,12 @@ pubs = sg.find(
     filters,
     fields,
     order=[{{"field_name": "version_number", "direction": "desc"}}],
+    limit={sg_limit},
 )
+
+truncated = len(pubs) > {max_results}
+if truncated:
+    pubs = pubs[:{max_results}]
 
 grouped = {{}}
 for p in pubs:
@@ -263,7 +287,14 @@ for p in pubs:
     }}
     grouped.setdefault(key, []).append(entry)
 
-print(json.dumps({{"publishes": grouped, "count": len(pubs)}}))
+result = {{"publishes": grouped, "count": len(pubs)}}
+if truncated:
+    result["truncated"] = True
+    result["truncation_message"] = (
+        "Results truncated at {max_results} items; "
+        "use publish_type or step filters to narrow results."
+    )
+print(json.dumps(result))
 """
         try:
             result = await remote_exec(code, timeout=30.0)
@@ -273,9 +304,15 @@ print(json.dumps({{"publishes": grouped, "count": len(pubs)}}))
 
     elif action == "load_latest":
         if not node_path:
-            return {"success": False, "error": "node_path is required for action='load_latest'"}
+            return {
+                "success": False,
+                "error": "node_path is required for action='load_latest'",
+            }
         if not publish_type:
-            return {"success": False, "error": "publish_type is required for action='load_latest'"}
+            return {
+                "success": False,
+                "error": "publish_type is required for action='load_latest'",
+            }
         code = f"""
 import json
 import hou

@@ -8,7 +8,12 @@ from pathlib import Path
 from typing import Any
 
 from oom_agent._app import mcp
-from oom_agent.guardrails import log_error, log_success, post_check_versioning, pre_check_scene_path
+from oom_agent.guardrails import (
+    log_error,
+    log_success,
+    post_check_versioning,
+    pre_check_scene_path,
+)
 from oom_agent.logging_config import get_logger
 from oom_agent.session_manager import get_session_manager
 from oom_agent.tools._helpers import remote_exec, require_session
@@ -30,7 +35,12 @@ async def _scene_load(hip_path: str) -> dict[str, Any]:
         return {"success": True, "hip_path": hip_path, "loaded": True}
     except Exception as exc:
         duration_ms = int((time.time() - start_time) * 1000)
-        log_error(session_id="mcp", method="scene.load", error=str(exc), duration_ms=duration_ms)
+        log_error(
+            session_id="mcp",
+            method="scene.load",
+            error=str(exc),
+            duration_ms=duration_ms,
+        )
         return {"success": False, "error": f"Failed to load scene: {exc}"}
 
 
@@ -49,7 +59,12 @@ async def _scene_save() -> dict[str, Any]:
         return {"success": True, "hip_path": state.hip_path, "version": "current"}
     except Exception as exc:
         duration_ms = int((time.time() - start_time) * 1000)
-        log_error(session_id="mcp", method="scene.save", error=str(exc), duration_ms=duration_ms)
+        log_error(
+            session_id="mcp",
+            method="scene.save",
+            error=str(exc),
+            duration_ms=duration_ms,
+        )
         return {"success": False, "error": f"Failed to save scene: {exc}"}
 
 
@@ -68,9 +83,11 @@ print(json.dumps({"old_path": old_path, "new_path": new_path}))
         if not result["ok"]:
             return {
                 "success": False,
-                "error": (result.get("stderr") or "").strip() or "scene version_up failed",
+                "error": (result.get("stderr") or "").strip()
+                or "scene version_up failed",
             }
         import json as _json
+
         stdout = (result.get("stdout") or "").strip()
         last = stdout.rfind("{")
         data = _json.loads(stdout[last:]) if last != -1 else {}
@@ -93,12 +110,14 @@ def _scene_info() -> dict[str, Any]:
     }
 
 
-def _scene_list() -> dict[str, Any]:
+def _scene_list(max_results: int = 200) -> dict[str, Any]:
     manager = get_session_manager()
     state = manager.state
     shot_path = state.paths.get("shot_path")
     if not shot_path:
-        return {"error": "No shot context active; create session with project+sequence+shot"}
+        return {
+            "error": "No shot context active; create session with project+sequence+shot"
+        }
 
     shot_root = Path(shot_path)
     tasks_root = shot_root / "tasks"
@@ -127,16 +146,32 @@ def _scene_list() -> dict[str, Any]:
             )
 
     scene_files.sort(key=lambda item: float(item["modified_ts"]), reverse=True)
-    return {
+
+    truncated = len(scene_files) > max_results
+    if truncated:
+        scene_files = scene_files[:max_results]
+
+    result: dict[str, Any] = {
         "shot_path": str(shot_root),
         "tasks_path": str(tasks_root),
         "count": len(scene_files),
         "scenes": scene_files,
     }
+    if truncated:
+        result["truncated"] = True
+        result["truncation_message"] = (
+            f"Results truncated at {max_results} items; "
+            "increase max_results or use a more specific path."
+        )
+    return result
 
 
 @mcp.tool()
-async def scene(action: str, hip_path: str | None = None) -> dict[str, Any]:
+async def scene(
+    action: str,
+    hip_path: str | None = None,
+    max_results: int = 200,
+) -> dict[str, Any]:
     """
     Scene file operations.
 
@@ -147,6 +182,9 @@ async def scene(action: str, hip_path: str | None = None) -> dict[str, Any]:
                 "info" — return current scene path and load state;
                 "list" — list HIP files in the shot's tasks directory
         hip_path: Absolute path to HIP file (required for action="load")
+        max_results: Maximum number of scene files returned by action="list"
+            (default: 200). When the limit is hit the response includes
+            truncated=true and a truncation_message.
 
     Returns:
         Operation result dict
@@ -170,7 +208,7 @@ async def scene(action: str, hip_path: str | None = None) -> dict[str, Any]:
         return _scene_info()
 
     elif action == "list":
-        return _scene_list()
+        return _scene_list(max_results=max_results)
 
     else:
         return {

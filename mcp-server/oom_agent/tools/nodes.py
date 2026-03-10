@@ -154,6 +154,7 @@ def _do_node_query(
     recurse: bool,
     include_connections: bool,
     include_positions: bool,
+    max_results: int,
 ) -> dict[str, Any]:
     parent = hou.node(parent_path)
     if parent is None:
@@ -179,12 +180,23 @@ def _do_node_query(
             entry["position"] = _node_pos(node)
         nodes_info.append(entry)
 
+    truncated = len(nodes_info) > max_results
+    if truncated:
+        nodes_info = nodes_info[:max_results]
+
     result: dict[str, Any] = {
         "success": True,
         "parent_path": parent_path,
         "count": len(nodes_info),
         "nodes": nodes_info,
     }
+
+    if truncated:
+        result["truncated"] = True
+        result["truncation_message"] = (
+            f"Results truncated at {max_results} items; "
+            "use node_type or name_pattern filters to narrow results."
+        )
 
     if include_connections:
         connections = []
@@ -224,23 +236,36 @@ def _do_parm_get(hou: Any, node_path: str, parm_name: str) -> dict[str, Any]:
 
     parm = node.parm(parm_name)
     if parm is None:
-        return {"success": False, "error": f"Parm not found: {parm_name} on {node_path}"}
+        return {
+            "success": False,
+            "error": f"Parm not found: {parm_name} on {node_path}",
+        }
 
     return {"success": True, **_serialize_parm(parm)}
 
 
-def _do_parm_set(hou: Any, node_path: str, parm_name: str, value: Any) -> dict[str, Any]:
+def _do_parm_set(
+    hou: Any, node_path: str, parm_name: str, value: Any
+) -> dict[str, Any]:
     node = hou.node(node_path)
     if node is None:
         return {"success": False, "error": f"Node not found: {node_path}"}
 
     parm = node.parm(parm_name)
     if parm is None:
-        return {"success": False, "error": f"Parm not found: {parm_name} on {node_path}"}
+        return {
+            "success": False,
+            "error": f"Parm not found: {parm_name} on {node_path}",
+        }
 
     try:
         parm.set(value)
-        return {"success": True, "node_path": node_path, "parm_name": parm_name, "value": value}
+        return {
+            "success": True,
+            "node_path": node_path,
+            "parm_name": parm_name,
+            "value": value,
+        }
     except Exception as exc:
         return {"success": False, "error": str(exc)}
 
@@ -254,7 +279,10 @@ def _do_parm_set_expression(
 
     parm = node.parm(parm_name)
     if parm is None:
-        return {"success": False, "error": f"Parm not found: {parm_name} on {node_path}"}
+        return {
+            "success": False,
+            "error": f"Parm not found: {parm_name} on {node_path}",
+        }
 
     try:
         lang_map = {
@@ -360,14 +388,18 @@ def _do_node_set_flags(
     return {"success": True, "node_path": node_path, "applied": applied}
 
 
-def _do_parm_batch(hou: Any, node_path: str, parms: list[dict[str, Any]]) -> dict[str, Any]:
+def _do_parm_batch(
+    hou: Any, node_path: str, parms: list[dict[str, Any]]
+) -> dict[str, Any]:
     """Execute a list of parm operations and return aggregated results."""
     results = []
     for entry in parms:
         parm_action = entry.get("action", "get")
         parm_name = entry.get("parm_name") or entry.get("name")
         if not parm_name:
-            results.append({"success": False, "error": "parm_name missing in batch entry"})
+            results.append(
+                {"success": False, "error": "parm_name missing in batch entry"}
+            )
             continue
         if parm_action == "get":
             results.append(_do_parm_get(hou, node_path, parm_name))
@@ -377,9 +409,16 @@ def _do_parm_batch(hou: Any, node_path: str, parms: list[dict[str, Any]]) -> dic
         elif parm_action == "set_expression":
             expression = entry.get("expression", "")
             language = entry.get("language", "hscript")
-            results.append(_do_parm_set_expression(hou, node_path, parm_name, expression, language))
+            results.append(
+                _do_parm_set_expression(hou, node_path, parm_name, expression, language)
+            )
         else:
-            results.append({"success": False, "error": f"Unknown batch parm action: {parm_action!r}"})
+            results.append(
+                {
+                    "success": False,
+                    "error": f"Unknown batch parm action: {parm_action!r}",
+                }
+            )
     return {"results": results}
 
 
@@ -416,6 +455,7 @@ async def node_query(
     recurse: bool = False,
     include_connections: bool = False,
     include_positions: bool = False,
+    max_results: int = 200,
 ) -> dict[str, Any]:
     """
     List and search nodes within a network.
@@ -431,10 +471,14 @@ async def node_query(
         recurse: Search all descendants, not just direct children (default: False)
         include_connections: Include connection data between matched nodes
         include_positions: Include network positions for each node
+        max_results: Maximum number of nodes to return (default: 200). When the
+            limit is hit the response includes truncated=true and a
+            truncation_message. Increase or use filters to retrieve more.
 
     Returns:
         {success, parent_path, count, nodes: [{path, name, type, [position]}],
-         [connections: [{from, from_output, to, to_input}]]}
+         [connections: [{from, from_output, to, to_input}]],
+         [truncated, truncation_message]}
     """
     ok, err = require_session()
     if not ok:
@@ -451,6 +495,7 @@ async def node_query(
         recurse,
         include_connections,
         include_positions,
+        max_results,
     )
 
 
@@ -497,7 +542,10 @@ async def parm(
         return await asyncio.to_thread(_do_parm_batch, hou, node_path, parms)
 
     if not parm_name:
-        return {"success": False, "error": "parm_name is required (or provide parms list for batch)"}
+        return {
+            "success": False,
+            "error": "parm_name is required (or provide parms list for batch)",
+        }
 
     if action == "get":
         return await asyncio.to_thread(_do_parm_get, hou, node_path, parm_name)
@@ -505,7 +553,10 @@ async def parm(
         return await asyncio.to_thread(_do_parm_set, hou, node_path, parm_name, value)
     elif action == "set_expression":
         if expression is None:
-            return {"success": False, "error": "expression is required for action='set_expression'"}
+            return {
+                "success": False,
+                "error": "expression is required for action='set_expression'",
+            }
         return await asyncio.to_thread(
             _do_parm_set_expression, hou, node_path, parm_name, expression, language
         )
