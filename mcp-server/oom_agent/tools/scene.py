@@ -79,7 +79,7 @@ new_path = hou.hipFile.path()
 print(json.dumps({"old_path": old_path, "new_path": new_path}))
 """
     try:
-        result = await remote_exec(code, timeout=30.0)
+        result = await remote_exec(code, timeout=60.0)
         if not result["ok"]:
             return {
                 "success": False,

@@ -186,7 +186,8 @@ class SessionManager:
             )
 
         actual_port = ready_payload.get("port", port)
-        rpyc_timeout = float(os.environ.get("OOM_RPYC_TIMEOUT", "30"))
+        # Minimum 300s: Houdini startup is slow; sub-300s values are unsafe.
+        rpyc_timeout = max(300.0, float(os.environ.get("OOM_RPYC_TIMEOUT", "300")))
         self._conn = rpyc.connect(
             "localhost",
             actual_port,
@@ -210,7 +211,8 @@ class SessionManager:
     def _initialize_live(
         self, context_info: dict[str, Any], host: str, port: int
     ) -> None:
-        rpyc_timeout = float(os.environ.get("OOM_RPYC_TIMEOUT", "30"))
+        # Minimum 300s: live Houdini sessions may be slow to respond during cooking.
+        rpyc_timeout = max(300.0, float(os.environ.get("OOM_RPYC_TIMEOUT", "300")))
         # hrpyc starts a SlaveService -- connect with rpyc.classic so that
         # conn.modules, conn.execute, and conn.builtins are available.
         self._conn = rpyc.classic.connect(host, port)
@@ -285,7 +287,11 @@ class SessionManager:
                 # HYTHON mode: OomService exposes exec() with stdout/stderr capture.
                 async_exec = rpyc.async_(self._conn.root.exec)
                 future = async_exec(code)
-                future.wait(timeout=timeout)
+                # set_expiry raises AsyncResultTimeout if the deadline passes;
+                # wait() with no args blocks until resolution or expiry.
+                # (future.wait(timeout=...) silently returns on timeout without raising.)
+                future.set_expiry(timeout)
+                future.wait()
                 result = future.value
 
             return {
@@ -293,6 +299,11 @@ class SessionManager:
                 "stdout": str(result["stdout"] or ""),
                 "stderr": str(result["stderr"] or ""),
             }
+        except rpyc.AsyncResultTimeout:
+            self._mark_unhealthy(f"remote execution timed out after {timeout}s")
+            raise RuntimeError(
+                f"Remote hython execution timed out after {timeout}s"
+            )
         except EOFError:
             self._mark_unhealthy("rpyc connection lost")
             raise RuntimeError("rpyc connection to hython worker was lost")
