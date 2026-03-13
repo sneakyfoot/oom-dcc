@@ -33,7 +33,7 @@ import time
 
 
 @mcp.tool()
-async def execute_code(code: str, timeout: float = 30.0) -> dict[str, Any]:
+async def execute_code(code: str, timeout: float = 60.0) -> dict[str, Any]:
     """
     Execute Houdini Python code (hython) in the current session.
 

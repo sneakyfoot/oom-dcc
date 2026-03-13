@@ -20,7 +20,7 @@ def require_session() -> tuple[bool, dict[str, Any] | None]:
     return True, None
 
 
-async def remote_exec(code: str, timeout: float = 30.0) -> dict[str, Any]:
+async def remote_exec(code: str, timeout: float = 60.0) -> dict[str, Any]:
     """Execute *code* in the remote hython/live session."""
     manager = get_session_manager()
     return await manager.execute(code, timeout)
