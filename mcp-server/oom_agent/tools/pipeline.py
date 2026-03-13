@@ -159,7 +159,8 @@ versions = get_versions({json.dumps(cache_name)}, {json.dumps(publish_type)})
 print(json.dumps({{"versions": versions, "cache_name": {json.dumps(cache_name)}}}))
 """
         try:
-            result = await remote_exec(code, timeout=30.0)
+            # Minimum 60s: ShotGrid API calls may be slow on first query.
+            result = await remote_exec(code, timeout=60.0)
             return parse_remote_json(result)
         except Exception as exc:
             return {"success": False, "error": str(exc)}
@@ -187,7 +188,8 @@ else:
     print(json.dumps({{"cache_name": cache_name, "versions": versions}}))
 """
         try:
-            result = await remote_exec(code, timeout=30.0)
+            # Minimum 60s: ShotGrid query + HDA parameter updates can be slow.
+            result = await remote_exec(code, timeout=60.0)
             return parse_remote_json(result)
         except Exception as exc:
             return {"success": False, "error": str(exc)}
@@ -297,7 +299,8 @@ if truncated:
 print(json.dumps(result))
 """
         try:
-            result = await remote_exec(code, timeout=30.0)
+            # Minimum 60s: ShotGrid find() on large shot histories can be slow.
+            result = await remote_exec(code, timeout=60.0)
             return parse_remote_json(result)
         except Exception as exc:
             return {"success": False, "error": str(exc)}
@@ -336,7 +339,8 @@ else:
     print(json.dumps({{"node_path": {json.dumps(node_path)}, "old_path": old_path, "new_path": new_path}}))
 """
         try:
-            result = await remote_exec(code, timeout=30.0)
+            # Minimum 60s: ShotGrid lookup + HDA parameter write can be slow.
+            result = await remote_exec(code, timeout=60.0)
             return parse_remote_json(result)
         except Exception as exc:
             return {"success": False, "error": str(exc)}

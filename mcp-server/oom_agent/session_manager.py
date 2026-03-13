@@ -186,7 +186,9 @@ class SessionManager:
             )
 
         actual_port = ready_payload.get("port", port)
-        rpyc_timeout = float(os.environ.get("OOM_RPYC_TIMEOUT", "30"))
+        # Minimum 300s: rpyc operations (e.g. cook, bootstrap) can take several
+        # minutes; a 30s default caused spurious timeouts on the connection layer.
+        rpyc_timeout = float(os.environ.get("OOM_RPYC_TIMEOUT", "300"))
         self._conn = rpyc.connect(
             "localhost",
             actual_port,
@@ -210,7 +212,9 @@ class SessionManager:
     def _initialize_live(
         self, context_info: dict[str, Any], host: str, port: int
     ) -> None:
-        rpyc_timeout = float(os.environ.get("OOM_RPYC_TIMEOUT", "30"))
+        # Minimum 300s: same rationale as HYTHON mode — long-running Houdini
+        # operations must not be cut short by the connection-layer timeout.
+        rpyc_timeout = float(os.environ.get("OOM_RPYC_TIMEOUT", "300"))
         # hrpyc starts a SlaveService -- connect with rpyc.classic so that
         # conn.modules, conn.execute, and conn.builtins are available.
         self._conn = rpyc.classic.connect(host, port)
@@ -285,7 +289,12 @@ class SessionManager:
                 # HYTHON mode: OomService exposes exec() with stdout/stderr capture.
                 async_exec = rpyc.async_(self._conn.root.exec)
                 future = async_exec(code)
-                future.wait(timeout=timeout)
+                # set_expiry() is required instead of wait(timeout=): rpyc's
+                # AsyncResult.wait(timeout=) silently returns on expiry without
+                # raising, causing future.value to error on an unready result.
+                # set_expiry() + wait() raises AsyncResultTimeout on deadline.
+                future.set_expiry(timeout)
+                future.wait()
                 result = future.value
 
             return {

@@ -79,7 +79,8 @@ new_path = hou.hipFile.path()
 print(json.dumps({"old_path": old_path, "new_path": new_path}))
 """
     try:
-        result = await remote_exec(code, timeout=30.0)
+        # Minimum 60s: saveAndIncrementFileName writes to disk and may be slow.
+        result = await remote_exec(code, timeout=60.0)
         if not result["ok"]:
             return {
                 "success": False,
